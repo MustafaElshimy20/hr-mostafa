@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS } from './fields'
 import Admin from './Admin'
 import * as api from './api'
-import { LANGS, LEVELS, GOVS, PLACES, EDU, WORK_MODES, INTERVIEWS, SORTS, low, placesOf, govsOf, levelOk, eduOk, workMode, interviewMode, sortOffers, searchText, salaryLabel, salarySplit, category, rotational, gradsOnly } from './lib'
+import { LANGS, LEVELS, GOVS, PLACES, EDU, WORK_MODES, INTERVIEWS, SORTS, low, placesOf, govsOf, levelOk, eduOk, workMode, interviewMode, sortOffers, searchText, salaryLabel, category, rotational, gradsOnly } from './lib'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
@@ -112,14 +112,12 @@ function Card({ o, saved, onSave }) {
 }
 
 // salary text with the Net / Gross word right after the figure, e.g. "12,000 Net + uncapped commission"
-function Salary({ o }) { const { before, type, after } = salarySplit(o)
-  return <>{before}{type && <>{' '}<span className={'stype in ' + type.toLowerCase()}>{type}</span></>}{after}</> }
 
 function Detail({ o, n, loading, saved, toggleSave }) {
   const [copied, setCopied] = useState(false)
   if (!o) return <><a className="back" href="#">← All offers</a><p className="empty">{loading ? 'Loading…' : 'This offer is no longer available.'}</p></>
   const Sec = ({ t, keys }) => { const rows = keys.map((k) => [k, FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? workMode(o) : o[k]]).filter((r) => r[2])
-    return rows.length ? <section className="card"><h3>{t}</h3><dl>{rows.map(([k, l, v]) => <div key={k}><dt>{l}</dt><dd>{k === 'salary' ? <Salary o={o} /> : v}</dd></div>)}</dl></section> : null }
+    return rows.length ? <section className="card"><h3>{t}</h3><dl>{rows.map(([k, l, v]) => <div key={k}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null }
   const msg = `Hello, I'd like to apply for: ${o.position} at ${o.company}${o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''}`
   return (<>
     <a className="back" href="#">← All offers</a>
