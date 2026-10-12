@@ -1,7 +1,8 @@
 // [key, label, long?, dropdown options?]  – edit this list to add/remove fields everywhere
 export const FIELDS = [
   ['company', 'Company'], ['position', 'Position'], ['location', 'Location'], ['nationality', 'Nationality'],
-  ['salary', 'Salary (EGP / month)', 1], ['shifts', 'Shifts', 1], ['work_mode', 'Work Mode', 0, ['On-site', 'Work from home', 'Hybrid']],
+  ['salary', 'Salary (EGP / month)', 1], ['salary_label', 'Salary label on cards', 0, ['Up to', 'Net']],
+  ['shifts', 'Shifts', 1], ['work_mode', 'Work Mode', 0, ['On-site', 'Work from home', 'Hybrid']],
   ['age', 'Age'], ['education', 'Educational Status'],
   ['experience', 'Experience', 1], ['military', 'Military'], ['transport', 'Transportation', 1], ['language', 'Language & Level'],
   ['benefits', 'Benefits', 1], ['steps', 'Form Process', 1], ['interview_type', 'Interview Type'], ['interview_time', 'Interview Date & Time'],
@@ -11,7 +12,7 @@ export const FIELDS = [
 // how the edit form is grouped
 export const SECTIONS = [
   ['Basics', ['company', 'position', 'location', 'work_mode', 'status']],
-  ['Pay & schedule', ['salary', 'shifts', 'benefits', 'transport']],
+  ['Pay & schedule', ['salary', 'salary_label', 'shifts', 'benefits', 'transport']],
   ['Requirements', ['education', 'age', 'nationality', 'military', 'experience', 'language']],
   ['How to apply', ['interview_type', 'interview_time', 'steps', 'link']],
   ['Notes', ['notes', 'internal']],

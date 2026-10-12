@@ -34,6 +34,15 @@ export const category = (o) => { const t = low(o.position + ' ' + o.company)
   if (/customer|support|advisor|survey|account/.test(t)) return 'Customer Service'
   return 'Other' }
 export const maxSalary = (o) => Math.max(0, ...((o.salary || '').match(/\d[\d,]*/g) || []).map((x) => +x.replace(/,/g, '')).filter((n) => n >= 5000 && n <= 100000))
+// Card / share headline prefix; older offers without the field default to "Up to"
+export const SALARY_LABELS = ['Up to', 'Net']
+export const salaryLabel = (o) => (SALARY_LABELS.includes(o.salary_label) ? o.salary_label : 'Up to')
+export const salaryHeadline = (o) => {
+  const m = maxSalary(o)
+  if (m) return `${salaryLabel(o)} ${m.toLocaleString()} EGP`
+  if (o.salary) return o.salary.slice(0, 40)
+  return 'Salary on request'
+}
 export const rotational = (o) => low(o.shifts).startsWith('rotational')
 export const gradsOnly = (o) => /graduate/i.test(o.education) && !/undergrad|dropout|gap|student/i.test(o.education)
 

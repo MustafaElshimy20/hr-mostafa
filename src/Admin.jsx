@@ -44,7 +44,7 @@ function OffersTab({ offers, run, setEdit }) {
     <div className="tools">
       <input placeholder="🔍 Search offers…" value={q} onChange={(e) => setQ(e.target.value)} />
       <select value={st} onChange={(e) => setSt(e.target.value)}><option value="">All statuses</option><option>Open</option><option>Closed</option></select>
-      <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site' })}>+ New offer</button></div>
+      <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site', salary_label: 'Up to' })}>+ New offer</button></div>
     <div className="selbar">
       <label className="chk"><input type="checkbox" checked={allOn} onChange={() => setSel(allOn ? [] : list.map((o) => o.id))} /> {chosen.length ? `${chosen.length} selected` : `Select all (${list.length})`}</label>
       {chosen.length > 0 && <div className="row">
