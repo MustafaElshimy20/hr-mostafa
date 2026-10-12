@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS, SETTINGS } from './fields'
 import * as api from './api'
-import { LANGS, LEVELS, GOVS, PLACES, low, placesOf, govsOf, levelOk, category, maxSalary, rotational, gradsOnly, langLevels } from './lib'
+import { LANGS, LEVELS, GOVS, PLACES, EDU, WORK_MODES, INTERVIEWS, SORTS, low, placesOf, govsOf, levelOk, eduOk, workMode, interviewMode, sortOffers, category, maxSalary, rotational, gradsOnly } from './lib'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
@@ -20,7 +20,7 @@ function pageList(cur, pages) {
   const nums = [...set].filter((x) => x >= 1 && x <= pages).sort((a, b) => a - b), out = []
   nums.forEach((x, i) => { if (i && x - nums[i - 1] > 1) out.push('…'); out.push(x) }); return out
 }
-const EMPTY = { q: '', cat: '', gov: '', area: '', lang: '', level: '', edu: '', shift: '', sort: 'new', saved: false }
+const EMPTY = { q: '', cat: '', gov: '', area: '', lang: '', level: '', edu: '', shift: '', work: '', iv: '', sort: 'new', saved: false }
 
 export default function App() {
   const [offers, setOffers] = useState([]), [settings, setSettings] = useState(api.DEFAULTS), [err, setErr] = useState('')
@@ -54,9 +54,9 @@ function List({ offers, settings, loading, saved, toggleSave, f, setF, page, set
     const ks = f.area && PLACES.find((p) => p[1] === f.area)[2]
     const r = offers.filter((o) => (!f.cat || category(o) === f.cat) && (!f.gov || govsOf(o).has(f.gov)) && (!ks || ks.some((k) => low(o.location).includes(k))) &&
       (!f.lang || (o.language || '').includes(f.lang)) && levelOk(o, f.lang, f.level) &&
-      (!f.edu || (f.edu === 'grads' ? gradsOnly(o) : !gradsOnly(o))) && (!f.shift || (f.shift === 'rot') === rotational(o)) &&
+      eduOk(o, f.edu) && (!f.shift || (f.shift === 'rot') === rotational(o)) && (!f.work || workMode(o) === f.work) && (!f.iv || interviewMode(o) === f.iv) &&
       (!f.saved || saved.includes(o.id)) && (!f.q || low(Object.values(o).join(' ')).includes(low(f.q))))
-    return f.sort === 'sal' ? [...r].sort((a, b) => maxSalary(b) - maxSalary(a)) : r
+    return sortOffers(r, f.sort, f.lang)
   }, [offers, f, saved])
   const pages = Math.max(1, Math.ceil(list.length / PER_PAGE)), cur = Math.min(page, pages)
   const shown = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE)
@@ -73,12 +73,14 @@ function List({ offers, settings, loading, saved, toggleSave, f, setF, page, set
       <select value={f.area} onChange={set('area')}><option value="">{f.gov ? 'All areas in ' + f.gov : 'Area'}</option>{areas.map((a) => <option key={a[1]}>{a[1]}</option>)}</select>
       <select value={f.lang} onChange={set('lang')}><option value="">Language</option>{LANGS.map((l) => <option key={l}>{l}</option>)}</select>
       <select value={f.level} onChange={set('level')}><option value="">My language level</option>{LEVELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-      <select value={f.edu} onChange={set('edu')}><option value="">Education</option><option value="grads">Graduates only</option><option value="open">Students / dropouts welcome</option></select>
+      <select value={f.edu} onChange={set('edu')}><option value="">Education status</option>{EDU.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       <select value={f.shift} onChange={set('shift')}><option value="">Shift type</option><option value="fix">Fixed shift</option><option value="rot">Rotational</option></select>
-      <select value={f.sort} onChange={set('sort')}><option value="new">Sort: default</option><option value="sal">Sort: highest salary</option></select></div>
+      <select value={f.work} onChange={set('work')}><option value="">Work mode</option>{WORK_MODES.map((m) => <option key={m}>{m}</option>)}</select>
+      <select value={f.iv} onChange={set('iv')}><option value="">Interview type</option>{INTERVIEWS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
     {f.level && <p className="hint">Showing offers that need level <b>{f.level}</b> or lower{f.lang ? ' in ' + f.lang : ''}. Offers that don't state a level are included.</p>}
     <div className="row bar" ref={barRef}><span className="muted">{loading ? 'Loading…' : list.length > PER_PAGE ? `Showing ${(cur - 1) * PER_PAGE + 1}–${Math.min(cur * PER_PAGE, list.length)} of ${list.length} offers` : `${list.length} offers found`}</span>
-      {dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear filters</button>}</div>
+      <span className="grow" />{dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear filters</button>}
+      <select className="sortsel" aria-label="Sort offers" value={f.sort} onChange={set('sort')}>{SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
     <div className="grid">{shown.map((o) => <Card key={o.id} o={o} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
     {pages > 1 && <nav className="pager" aria-label="Pages">
       <button className="pg" disabled={cur === 1} onClick={() => go(cur - 1)}>‹ Prev</button>
@@ -99,7 +101,7 @@ function Card({ o, saved, onSave }) {
       <span className="co">{o.company}</span><h3>{o.position}</h3>
       <div className="money">{m ? `Up to ${m.toLocaleString()} EGP` : o.salary ? o.salary.slice(0, 40) : 'Salary on request'}</div>
       <div className="tags"><span>📍 {where}</span>{lang && <span>🗣️ {lang}</span>}
-        <span>{rotational(o) ? '🔄 Rotational' : '🕐 Fixed shift'}</span>{gradsOnly(o) && <span>🎓 Graduates</span>}{/female/i.test(o.position) && <span>👩 Females only</span>}</div>
+        <span>{rotational(o) ? '🔄 Rotational' : '🕐 Fixed shift'}</span><span>{{ 'On-site': '🏢 On-site', 'Work from home': '🏠 Work from home', Hybrid: '🔀 Hybrid' }[workMode(o)]}</span>{gradsOnly(o) && <span>🎓 Graduates</span>}{/female/i.test(o.position) && <span>👩 Females only</span>}</div>
       <span className="more">View details →</span></a>
     <div className="acts">
       <a className="ico" href={shareHref(o)} target="_blank" rel="noreferrer" title="Share on WhatsApp" aria-label="Share on WhatsApp">↗</a>
@@ -110,7 +112,7 @@ function Card({ o, saved, onSave }) {
 function Detail({ o, n, loading, saved, toggleSave }) {
   const [copied, setCopied] = useState(false)
   if (!o) return <><a className="back" href="#">← All offers</a><p className="empty">{loading ? 'Loading…' : 'This offer is no longer available.'}</p></>
-  const Sec = ({ t, keys }) => { const rows = keys.map((k) => [FIELDS.find((x) => x[0] === k)[1], o[k]]).filter((r) => r[1])
+  const Sec = ({ t, keys }) => { const rows = keys.map((k) => [FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? workMode(o) : o[k]]).filter((r) => r[1])
     return rows.length ? <section className="card"><h3>{t}</h3><dl>{rows.map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null }
   const msg = `Hello, I'd like to apply for: ${o.position} at ${o.company}${o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''}`
   return (<>
@@ -124,7 +126,7 @@ function Detail({ o, n, loading, saved, toggleSave }) {
         <button className="btn" onClick={() => navigator.clipboard.writeText(offerLink(o)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }, () => {})}>{copied ? 'Copied ✔' : '🔗 Copy link'}</button>
       </div></div>
     <Sec t="Salary & benefits" keys={['salary', 'benefits', 'transport']} />
-    <Sec t="Schedule" keys={['shifts', 'interview_type', 'interview_time']} />
+    <Sec t="Schedule" keys={['shifts', 'work_mode', 'interview_type', 'interview_time']} />
     <Sec t="Requirements" keys={['education', 'age', 'nationality', 'military', 'experience', 'language']} />
     <Sec t="More info" keys={['steps', 'notes']} />
     <div className="sticky"><a className="btn wa big" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply on WhatsApp</a></div>
@@ -146,7 +148,7 @@ function Admin({ offers, settings, session, reload }) {
     {edit ? <Form o={edit} onCancel={() => setEdit(null)} onSave={(o) => run(() => api.saveOffer(o).then(() => setEdit(null)), 'Offer saved ✔')} /> : <>
       <div className="row"><h3 className="grow">Offers ({offers.length})</h3>
         {!api.demo && !offers.length && <button className="btn" onClick={() => run(api.importStarter, 'Starter offers loaded ✔')}>Load starter offers</button>}
-        <button className="btn pri" onClick={() => setEdit({ status: 'Open' })}>+ New offer</button></div>
+        <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site' })}>+ New offer</button></div>
       {offers.map((o) => <div className={'card row ' + (o.status === 'Closed' ? 'closed' : '')} key={o.id}>
         <div className="grow"><span className="co">{o.company}</span><b> {o.position}</b>{o.status === 'Closed' && <em> (closed)</em>}</div>
         <button className="btn" onClick={() => setEdit(o)}>Edit</button>
@@ -158,7 +160,7 @@ function Admin({ offers, settings, session, reload }) {
 function Form({ o, onSave, onCancel }) {
   const [v, setV] = useState(o)
   return (<section className="card"><h3>{o.id ? 'Edit offer' : 'New offer'}</h3>
-    {FIELDS.map(([k, l, long]) => <label key={k}>{l}{long ? <textarea value={v[k] || ''} onChange={(e) => setV({ ...v, [k]: e.target.value })} /> : <input value={v[k] || ''} onChange={(e) => setV({ ...v, [k]: e.target.value })} />}</label>)}
+    {FIELDS.map(([k, l, long, opts]) => <label key={k}>{l}{opts ? <select value={v[k] || opts[0]} onChange={(e) => setV({ ...v, [k]: e.target.value })}>{opts.map((x) => <option key={x}>{x}</option>)}</select> : long ? <textarea value={v[k] || ''} onChange={(e) => setV({ ...v, [k]: e.target.value })} /> : <input value={v[k] || ''} onChange={(e) => setV({ ...v, [k]: e.target.value })} />}</label>)}
     <label>Status<select value={v.status || 'Open'} onChange={(e) => setV({ ...v, status: e.target.value })}><option>Open</option><option>Closed</option></select></label>
     <div className="row"><button className="btn pri" onClick={() => onSave(v)}>Save</button><button className="btn" onClick={onCancel}>Cancel</button></div></section>)
 }

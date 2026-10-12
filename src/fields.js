@@ -1,7 +1,7 @@
-// [key, label, long?]  – edit this list to add/remove fields everywhere
+// [key, label, long?, dropdown options?]  – edit this list to add/remove fields everywhere
 export const FIELDS = [
   ['company','Company'],['position','Position'],['location','Location'],['nationality','Nationality'],
-  ['salary','Salary (EGP / month)',1],['shifts','Shifts',1],['age','Age'],['education','Educational Status'],
+  ['salary','Salary (EGP / month)',1],['shifts','Shifts',1],['work_mode','Work Mode',0,['On-site','Work from home','Hybrid']],['age','Age'],['education','Educational Status'],
   ['experience','Experience',1],['military','Military'],['transport','Transportation',1],['language','Language & Level'],
   ['benefits','Benefits',1],['steps','Form Process',1],['interview_type','Interview Type'],['interview_time','Interview Date & Time'],
   ['link','Form Link'],['notes','Notes',1],

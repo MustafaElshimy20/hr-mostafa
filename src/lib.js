@@ -50,3 +50,45 @@ export function groupByCompany(items) {
     return a.t - b.t || (a.o.position || '').localeCompare(b.o.position || '')
   }).map((x) => x.o)
 }
+
+// ---- education: which candidate statuses an offer accepts (empty/unknown = accepts everyone)
+export const EDU = [['grad', 'Graduate'], ['under', 'Undergraduate / student'], ['gap', 'Gap year'], ['drop', 'Dropout']]
+export function eduAccepts(o) {
+  const t = low(o.education), s = new Set()
+  if (/\bgrads?\b|graduates?\b/.test(t)) s.add('grad')
+  if (/undergrad|student/.test(t)) s.add('under')
+  if (/gap/.test(t)) s.add('gap')
+  if (/dropout|dropped/.test(t)) s.add('drop')
+  return s
+}
+export const eduOk = (o, v) => { if (!v) return true; const s = eduAccepts(o); return s.size === 0 || s.has(v) }
+
+// ---- work mode (offers saved before this field existed count as On-site)
+export const WORK_MODES = ['On-site', 'Work from home', 'Hybrid']
+export const workMode = (o) => (WORK_MODES.includes(o.work_mode) ? o.work_mode : 'On-site')
+
+// ---- interview type, read from "Interview Type" + "Form Process": online | site | both | '' (unknown)
+export const INTERVIEWS = [['online', 'Online interview only'], ['site', 'On-site interview only'], ['both', 'Online, then on-site']]
+export function interviewMode(o) {
+  const t = low((o.interview_type || '') + ' ' + (o.steps || '')), on = /online/.test(t), site = /\bsite\b|on-?site/.test(t)
+  return on && site ? 'both' : on ? 'online' : site ? 'site' : ''
+}
+
+// ---- sorting
+export const SORTS = [['new', 'Sort: default (grouped by company)'], ['co', 'Company A–Z'], ['pos', 'Job title A–Z'], ['sal', 'Salary: high → low'], ['sal_lo', 'Salary: low → high'], ['lang_hi', 'Language level: high → low'], ['lang_lo', 'Language level: low → high']]
+const LV = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+export function levelRank(o, lang) { // -1 = no level stated
+  const lv = langLevels(o), v = lang ? [lv[lang]] : Object.values(lv)
+  return Math.max(-1, ...v.filter(Boolean).map((x) => LV.indexOf(x)))
+}
+export function sortOffers(list, mode, lang) {
+  const cmpText = (a, b) => companyKey(a.company).localeCompare(companyKey(b.company)) || (a.position || '').localeCompare(b.position || '')
+  const last = (v) => (v <= 0 ? Infinity : v) // salary 0 / unknown goes to the end
+  const by = {
+    co: cmpText, pos: (a, b) => (a.position || '').localeCompare(b.position || '') || cmpText(a, b),
+    sal: (a, b) => maxSalary(b) - maxSalary(a), sal_lo: (a, b) => last(maxSalary(a)) - last(maxSalary(b)),
+    lang_hi: (a, b) => { const x = levelRank(a, lang), y = levelRank(b, lang); return (x < 0) - (y < 0) || y - x },
+    lang_lo: (a, b) => { const x = levelRank(a, lang), y = levelRank(b, lang); return (x < 0) - (y < 0) || x - y },
+  }
+  return by[mode] ? [...list].sort(by[mode]) : list
+}
