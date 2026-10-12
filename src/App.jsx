@@ -1,22 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FIELDS, SETTINGS } from './fields'
 import * as api from './api'
+import { LANGS, LEVELS, GOVS, PLACES, low, placesOf, govsOf, levelOk, category, maxSalary, rotational, gradsOnly, langLevels } from './lib'
 
-const LANGS = ['English', 'French', 'German', 'Dutch', 'Portuguese', 'Italian', 'Spanish', 'Hindi']
-const AREAS = [['Nasr City', ['nasr city']], ['Maadi', ['maadi']], ['Heliopolis', ['heliopolis', 'masr el gedida']], ['New Cairo', ['new cairo', 'kattameya', 'settlement', 'smart village']],
-  ['Sheikh Zayed', ['zayed']], ['6th of October', ['october']], ['El Nozha', ['nozha']], ['Downtown / Abbasiya', ['downtown', 'abbasiya']]]
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
-const low = (s) => (s || '').toLowerCase()
-const category = (o) => { const t = low(o.position + ' ' + o.company)
-  if (/\bhr\b|recruit|payroll/.test(t)) return 'HR'
-  if (/sales|appointment|lead|telemarket|solar|roofing/.test(t)) return 'Sales & Telesales'
-  if (/customer|support|advisor|survey|account/.test(t)) return 'Customer Service'
-  return 'Other' }
-const maxSalary = (o) => Math.max(0, ...((o.salary || '').match(/\d[\d,]*/g) || []).map((x) => +x.replace(/,/g, '')).filter((n) => n >= 5000 && n <= 100000))
-const rotational = (o) => low(o.shifts).startsWith('rotational')
-const gradsOnly = (o) => /graduate/i.test(o.education) && !/undergrad|dropout|gap|student/i.test(o.education)
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
-const EMPTY = { q: '', cat: '', lang: '', area: '', edu: '', shift: '', sal: 0, sort: 'new' }
+const EMPTY = { q: '', cat: '', gov: '', area: '', lang: '', level: '', edu: '', shift: '', sort: 'new' }
 
 export default function App() {
   const [offers, setOffers] = useState([]), [settings, setSettings] = useState(api.DEFAULTS), [err, setErr] = useState('')
@@ -43,26 +32,30 @@ function List({ offers, settings, loading }) {
   const [f, setF] = useState(EMPTY)
   const set = (k) => (e) => setF({ ...f, [k]: e && e.target ? e.target.value : e })
   const cats = useMemo(() => { const m = {}; offers.forEach((o) => { const c = category(o); m[c] = (m[c] || 0) + 1 }); return m }, [offers])
+  const areas = PLACES.filter((p) => !f.gov || p[0] === f.gov)
   const list = useMemo(() => {
-    const ks = f.area && AREAS.find((a) => a[0] === f.area)[1]
-    const r = offers.filter((o) => (!f.cat || category(o) === f.cat) && (!f.lang || (o.language || '').includes(f.lang)) && (!ks || ks.some((k) => low(o.location).includes(k))) &&
-      (!f.edu || (f.edu === 'grads' ? gradsOnly(o) : !gradsOnly(o))) && (!f.shift || (f.shift === 'rot') === rotational(o)) && maxSalary(o) >= +f.sal &&
+    const ks = f.area && PLACES.find((p) => p[1] === f.area)[2]
+    const r = offers.filter((o) => (!f.cat || category(o) === f.cat) && (!f.gov || govsOf(o).has(f.gov)) && (!ks || ks.some((k) => low(o.location).includes(k))) &&
+      (!f.lang || (o.language || '').includes(f.lang)) && levelOk(o, f.lang, f.level) &&
+      (!f.edu || (f.edu === 'grads' ? gradsOnly(o) : !gradsOnly(o))) && (!f.shift || (f.shift === 'rot') === rotational(o)) &&
       (!f.q || low(Object.values(o).join(' ')).includes(low(f.q))))
     return f.sort === 'sal' ? [...r].sort((a, b) => maxSalary(b) - maxSalary(a)) : r
   }, [offers, f])
-  const dirty = f.cat || f.lang || f.area || f.edu || f.shift || +f.sal || f.q
+  const dirty = Object.entries(f).some(([k, v]) => k !== 'sort' && v)
   return (<>
     <section className="hero"><h1>{settings.title}</h1><p>{settings.intro}</p>
       <input className="big" placeholder="🔍 Search by company, job, area, language…" value={f.q} onChange={set('q')} /></section>
     <div className="chips"><button className={!f.cat ? 'chip on' : 'chip'} onClick={() => set('cat')('')}>All <small>{offers.length}</small></button>
       {Object.entries(cats).map(([c, n]) => <button key={c} className={f.cat === c ? 'chip on' : 'chip'} onClick={() => set('cat')(c)}>{c} <small>{n}</small></button>)}</div>
     <div className="filters">
+      <select value={f.gov} onChange={(e) => setF({ ...f, gov: e.target.value, area: '' })}><option value="">Governorate</option>{GOVS.map((g) => <option key={g}>{g}</option>)}</select>
+      <select value={f.area} onChange={set('area')}><option value="">{f.gov ? 'All areas in ' + f.gov : 'Area'}</option>{areas.map((a) => <option key={a[1]}>{a[1]}</option>)}</select>
       <select value={f.lang} onChange={set('lang')}><option value="">Language</option>{LANGS.map((l) => <option key={l}>{l}</option>)}</select>
-      <select value={f.area} onChange={set('area')}><option value="">Area</option>{AREAS.map((a) => <option key={a[0]}>{a[0]}</option>)}</select>
+      <select value={f.level} onChange={set('level')}><option value="">My language level</option>{LEVELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       <select value={f.edu} onChange={set('edu')}><option value="">Education</option><option value="grads">Graduates only</option><option value="open">Students / dropouts welcome</option></select>
       <select value={f.shift} onChange={set('shift')}><option value="">Shift type</option><option value="fix">Fixed shift</option><option value="rot">Rotational</option></select>
-      <select value={f.sal} onChange={set('sal')}><option value={0}>Any salary</option>{[12000, 15000, 20000, 25000].map((n) => <option key={n} value={n}>{n / 1000}K+ EGP</option>)}</select>
       <select value={f.sort} onChange={set('sort')}><option value="new">Sort: default</option><option value="sal">Sort: highest salary</option></select></div>
+    {f.level && <p className="hint">Showing offers that need level <b>{f.level}</b> or lower{f.lang ? ' in ' + f.lang : ''}. Offers that don't state a level are included.</p>}
     <div className="row bar"><span className="muted">{loading ? 'Loading…' : `${list.length} offers found`}</span>
       {dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear filters</button>}</div>
     <div className="grid">{list.map((o) => <Card key={o.id} o={o} />)}</div>
@@ -71,11 +64,13 @@ function List({ offers, settings, loading }) {
 }
 
 function Card({ o }) {
-  const m = maxSalary(o), area = AREAS.find((a) => a[1].some((k) => low(o.location).includes(k)))
+  const m = maxSalary(o), pl = placesOf(o), lv = langLevels(o)
+  const where = pl.length > 2 ? `Multiple locations (${pl.length})` : pl.length ? pl.map((p) => p[1]).join(' / ') : (o.location || '').split(/[;(,]/)[0]
+  const lang = !o.language ? '' : o.language.length > 34 ? 'Multiple languages' : o.language
   return (<a className="offer" href={'#/offer/' + o.id}>
     <span className="co">{o.company}</span><h3>{o.position}</h3>
     <div className="money">{m ? `Up to ${m.toLocaleString()} EGP` : o.salary ? o.salary.slice(0, 40) : 'Salary on request'}</div>
-    <div className="tags"><span>📍 {area ? area[0] : (o.location || '').split(/[;(,]/)[0]}</span>{o.language && <span>🗣️ {o.language.split(/[+/(,]/)[0].trim()}</span>}
+    <div className="tags"><span>📍 {where}</span>{lang && <span>🗣️ {lang}</span>}
       <span>{rotational(o) ? '🔄 Rotational' : '🕐 Fixed shift'}</span>{gradsOnly(o) && <span>🎓 Graduates</span>}{/female/i.test(o.position) && <span>👩 Females only</span>}</div>
     <span className="more">View details →</span></a>)
 }
