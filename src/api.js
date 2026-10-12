@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import seed from './offers.json'
-const url = import.meta.env.VITE_SUPABASE_URL, key = import.meta.env.VITE_SUPABASE_ANON_KEY
+const env = import.meta.env
+const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const sb = url && key ? createClient(url, key) : null
 export const demo = !sb
 export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the job offer that fits you. Search, filter, then apply on WhatsApp.', whatsapp: '201505885209', footer: '' }
