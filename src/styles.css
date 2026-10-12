@@ -1,0 +1,25 @@
+:root{--t:#0f766e;--t2:#14b8a6;--bg:#f4f8f7;--tx:#10201e;--m:#64748b;--b:#dbe7e5}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--tx)}
+a{color:inherit}.wrap{max-width:1040px;margin:0 auto;padding:0 16px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1}
+.top{background:#fff;border-bottom:1px solid var(--b);position:sticky;top:0;z-index:5}.top .row{height:58px}.brand{color:var(--t);font-size:19px;font-weight:800;text-decoration:none}
+.hero{padding:34px 0 10px;text-align:center}.hero h1{margin:0 0 6px;font-size:32px;color:var(--t)}.hero p{margin:0 auto 18px;color:var(--m);max-width:560px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--b);border-radius:10px;font:inherit;background:#fff;color:var(--tx)}textarea{min-height:70px}
+.big{max-width:620px;padding:14px 16px;font-size:16px;box-shadow:0 4px 16px rgba(15,118,110,.08)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:none}.chip{white-space:nowrap;border:1px solid var(--b);background:#fff;padding:7px 14px;border-radius:99px;cursor:pointer;font:inherit}
+.chip small{color:var(--m)}.chip.on{background:var(--t);border-color:var(--t);color:#fff}.chip.on small{color:#c9f2ee}
+.filters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0}@media(max-width:820px){.filters{grid-template-columns:repeat(2,1fr)}}
+.bar{margin:8px 0 12px;justify-content:space-between}.muted{color:var(--m);font-size:13px}.link{background:none;border:0;color:var(--t);cursor:pointer;font:inherit;text-decoration:underline}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.offer{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid var(--b);border-radius:14px;padding:18px;text-decoration:none;transition:.15s}
+.offer:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(15,118,110,.12);border-color:var(--t2)}.offer h3{margin:0;font-size:17px;line-height:1.3}
+.co{color:var(--t);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.money{font-weight:700;color:#15803d;font-size:16px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}.tags span{background:#eef6f5;border-radius:99px;padding:3px 10px;font-size:12.5px}.more{margin-top:auto;padding-top:8px;color:var(--t);font-weight:600;font-size:14px}
+.empty{text-align:center;color:var(--m);padding:40px 0}.back{display:inline-block;margin:16px 0;color:var(--t);text-decoration:none;font-weight:600}
+.dhead{background:#fff;border:1px solid var(--b);border-radius:14px;padding:22px;margin-bottom:14px}.dhead h1{margin:4px 0 10px;font-size:26px}.dhead .btn{margin-top:14px}
+.card{background:#fff;border:1px solid var(--b);border-radius:12px;padding:16px;margin:12px 0}.card.closed{opacity:.55}.card h3{margin:0 0 8px}
+dl{margin:0}dl div{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--b)}dl div:last-child{border:0}dt{width:150px;color:var(--m);flex:none;font-size:13px}dd{margin:0;white-space:pre-wrap}
+.btn{display:inline-block;border:1px solid var(--b);background:#fff;color:var(--tx);padding:8px 14px;border-radius:10px;cursor:pointer;font:inherit;font-size:14px;text-decoration:none;text-align:center}
+.btn.pri{background:var(--t);border-color:var(--t);color:#fff}.btn.wa{background:#25d366;border-color:#25d366;color:#fff;font-weight:600}.btn.big{padding:13px 22px;font-size:16px}.btn.del{color:#c0392b}
+.sticky{position:sticky;bottom:0;padding:12px 0;background:linear-gradient(transparent,var(--bg) 40%);display:none}.sticky .btn{width:100%}@media(max-width:700px){.sticky{display:block}.dhead .btn{display:none}dl div{flex-direction:column;gap:0}dt{width:auto}}
+label{display:block;font-size:12px;font-weight:600;color:var(--m);margin:10px 0 4px;text-transform:uppercase}.note{background:#fef9c3;padding:8px 12px;border-radius:9px}.err{color:#c0392b}
+.foot{padding:28px 16px;color:var(--m);font-size:13px;display:flex;justify-content:space-between}.adm{color:#b8c4c2;text-decoration:none}.login{max-width:380px;margin:30px auto}
