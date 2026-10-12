@@ -36,3 +36,17 @@ export const category = (o) => { const t = low(o.position + ' ' + o.company)
 export const maxSalary = (o) => Math.max(0, ...((o.salary || '').match(/\d[\d,]*/g) || []).map((x) => +x.replace(/,/g, '')).filter((n) => n >= 5000 && n <= 100000))
 export const rotational = (o) => low(o.shifts).startsWith('rotational')
 export const gradsOnly = (o) => /graduate/i.test(o.education) && !/undergrad|dropout|gap|student/i.test(o.education)
+
+// Keeps offers of the same company together. Companies stay in the order they were first added
+// (ties -> A-Z); inside a company, offers keep the order they were added (ties -> A-Z by position).
+// items: [{ o: offer, t: number (creation time or index) }]
+export const companyKey = (c) => (c || '').replace(/\(.*?\)/g, '').trim().toLowerCase()
+export function groupByCompany(items) {
+  const first = {}
+  items.forEach(({ o, t }) => { const k = companyKey(o.company); if (!(k in first) || t < first[k]) first[k] = t })
+  return [...items].sort((a, b) => {
+    const ka = companyKey(a.o.company), kb = companyKey(b.o.company)
+    if (ka !== kb) return first[ka] - first[kb] || ka.localeCompare(kb)
+    return a.t - b.t || (a.o.position || '').localeCompare(b.o.position || '')
+  }).map((x) => x.o)
+}
