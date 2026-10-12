@@ -92,3 +92,6 @@ export function sortOffers(list, mode, lang) {
   }
   return by[mode] ? [...list].sort(by[mode]) : list
 }
+
+// text used by the visitors' search box (never includes internal notes)
+export const searchText = (o) => Object.entries(o).filter(([k]) => k !== 'internal' && k !== 'id').map(([, v]) => v).join(' ')

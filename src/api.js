@@ -5,7 +5,7 @@ const env = import.meta.env
 const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const sb = url && key ? createClient(url, key) : null
 export const demo = !sb
-export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the job offer that fits you. Search, filter, then apply on WhatsApp.', whatsapp: '201505885209', footer: '' }
+export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the job offer that fits you. Search, filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '' }
 const ls = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
 const base = () => ls('hr_offers', seed.map((d, i) => ({ id: 's' + i, ...d })))
 const put = (a) => localStorage.setItem('hr_offers', JSON.stringify(a))
@@ -26,6 +26,19 @@ export async function deleteOffer(id) {
   if (demo) return put(base().filter((x) => x.id !== id))
   const { error } = await sb.from('offers').delete().eq('id', id); if (error) throw error
 }
+export async function saveMany(items) {
+  if (demo) { const m = new Map(items.map((x) => [x.id, x])); return put(base().map((x) => m.get(x.id) || x)) }
+  await Promise.all(items.map(saveOffer))
+}
+export async function deleteMany(ids) {
+  if (demo) return put(base().filter((x) => !ids.includes(x.id)))
+  const { error } = await sb.from('offers').delete().in('id', ids); if (error) throw error
+}
+export async function importMany(list) {
+  const rows = list.map(({ id, ...d }) => d), t0 = Date.now()
+  if (demo) return put([...base(), ...rows.map((d, i) => ({ id: 'n' + (t0 + i), ...d }))])
+  const { error } = await sb.from('offers').insert(rows.map((data, i) => ({ data, created_at: new Date(t0 + i).toISOString() }))); if (error) throw error
+}
 export async function importStarter() {
   const t0 = Date.now() // staggered timestamps keep the starter order
   const { error } = await sb.from('offers').insert(seed.map((data, i) => ({ data, created_at: new Date(t0 + i).toISOString() }))); if (error) throw error
@@ -43,4 +56,5 @@ export const auth = {
   session: async () => (demo ? null : (await sb.auth.getSession()).data.session),
   login: (email, password) => sb.auth.signInWithPassword({ email, password }),
   logout: () => sb.auth.signOut(),
+  changePassword: (password) => sb.auth.updateUser({ password }),
 }
