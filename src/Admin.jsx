@@ -60,7 +60,7 @@ function OffersTab({ offers, run, setEdit }) {
       <div className="gh"><b>{g.name}</b><span>{g.items.length}</span></div>
       {g.items.map((o) => <div className={'arow' + (o.status === 'Closed' ? ' closed' : '')} key={o.id}>
         <input type="checkbox" aria-label="Select" checked={sel.includes(o.id)} onChange={() => toggle(o.id)} />
-        <button className="ainfo" onClick={() => setEdit(o)}><b>{o.position}{salaryTypeOf(o) && <span className={'stype ' + salaryTypeOf(o).toLowerCase()}>{salaryTypeOf(o)}</span>}</b><small>{[o.location, o.salary].filter(Boolean).join(' · ').slice(0, 90)}</small></button>
+        <button className="ainfo" onClick={() => setEdit(o)}><b>{o.position}{salaryTypeOf(o) && <>{' '}<span className={'stype ' + salaryTypeOf(o).toLowerCase()}>{salaryTypeOf(o)}</span></>}</b><small>{[o.location, o.salary].filter(Boolean).join(' · ').slice(0, 90)}</small></button>
         <button className={'pill ' + (o.status === 'Closed' ? 'off' : 'on')} onClick={() => flip(o)} title="Click to switch">{o.status === 'Closed' ? 'Closed' : 'Open'}</button>
         <div className="row acts2"><button className="btn sm" onClick={() => setEdit(o)}>Edit</button><button className="btn sm" onClick={() => dup(o)} title="Create a copy (same company)">Duplicate</button><button className="btn sm del" onClick={() => del(o)}>Delete</button></div>
       </div>)}

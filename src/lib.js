@@ -33,7 +33,53 @@ export const category = (o) => { const t = low(o.position + ' ' + o.company)
   if (/sales|appointment|lead|telemarket|solar|roofing/.test(t)) return 'Sales & Telesales'
   if (/customer|support|advisor|survey|account/.test(t)) return 'Customer Service'
   return 'Other' }
-export const maxSalary = (o) => Math.max(0, ...((o.salary || '').match(/\d[\d,]*/g) || []).map((x) => +x.replace(/,/g, '')).filter((n) => n >= 5000 && n <= 100000))
+// ---- salary shown on the cards ----
+// The headline figure = the FIRST EGP amount (or range) written in the salary text.
+//   "29,000 net fixed" -> 29,000 | "7,000-10,000 net (by experience)" -> 7,000 – 10,000 | "Up to 31,975 net (19,000 basic + ...)" -> 31,975 (with "Up to")
+//   A list such as "English 11-20K | French 18-25K" -> lowest – highest of the list. "12K" means 12,000. $ / € amounts are ignored.
+const FIG = /(\d[\d,]*(?:\.\d+)?)\s*(k)?(?![a-z])(?:\s*(?:-|–|—|to)\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?(?![a-z]))?/gi
+const egp = (n, k) => parseFloat(String(n).replace(/,/g, '')) * (k ? 1000 : 1)
+function findFigure(str) {
+  FIG.lastIndex = 0
+  let m
+  while ((m = FIG.exec(str))) {
+    if (/[$€£]\s*$/.test(str.slice(Math.max(0, m.index - 3), m.index))) continue // USD / EUR amount
+    if (/^\s*(%|usd|eur|per\b|\/)/i.test(str.slice(m.index + m[0].length, m.index + m[0].length + 8))) continue
+    let a = egp(m[1], m[2]), b = m[3] != null ? egp(m[3], m[4]) : a
+    if (m[3] != null && m[4] && !m[2] && a < 1000) a *= 1000 // "11-20K" = 11K-20K
+    if (a > b) [a, b] = [b, a]
+    if (b < 5000 || b > 100000) continue // not a monthly EGP salary (KPI of 2,000, "5 days", ...)
+    return { min: a, max: b, start: m.index, end: m.index + m[0].trimEnd().length }
+  }
+  return null
+}
+export function salaryFigure(o) {
+  const text = o.salary || ''
+  if (text.includes('|')) { // a list (one figure per language / account)
+    const f = text.split('|').map(findFigure).filter(Boolean)
+    if (f.length) return { min: Math.min(...f.map((x) => x.min)), max: Math.max(...f.map((x) => x.max)), start: -1, end: -1, upTo: false }
+  }
+  const f = findFigure(text)
+  return f && { ...f, upTo: /\bup\s*to\b/i.test(text.slice(0, f.start)) }
+}
+export const maxSalary = (o) => (salaryFigure(o) || { max: 0 }).max
+const money = (n) => Math.round(n).toLocaleString('en-US')
+// What the card shows: { text: '12,000 EGP' | 'Up to 12,000 EGP' | '7,000 – 10,000 EGP' | fallback, type: 'Net' | 'Gross' | '' }
+// "Up to" is shown only when the salary text itself says "up to" before the figure.
+export function salaryLabel(o) {
+  const f = salaryFigure(o), type = salaryTypeOf(o)
+  if (f) return { text: (f.upTo ? 'Up to ' : '') + (f.min === f.max ? money(f.max) : money(f.min) + ' – ' + money(f.max)) + ' EGP', type }
+  const first = (o.salary || '').split(/\s\+\s|[(\n;]/)[0].trim().slice(0, 40)
+  return first ? { text: first, type } : { text: 'Salary on request', type: '' }
+}
+// Salary text for the details page, split so the Net / Gross word can sit right after the figure ("12,000 Net + commission").
+// If the text already says net / gross, it is left exactly as written.
+export function salarySplit(o) {
+  const text = o.salary || '', type = salaryTypeOf(o)
+  if (!type || new RegExp('\\b' + type + '\\b', 'i').test(text)) return { before: text, type: '', after: '' }
+  const f = findFigure(text.includes('|') ? text.split('|')[0] : text)
+  return f && !text.includes('|') ? { before: text.slice(0, f.end), type, after: text.slice(f.end) } : { before: text, type, after: '' }
+}
 export const rotational = (o) => low(o.shifts).startsWith('rotational')
 export const gradsOnly = (o) => /graduate/i.test(o.education) && !/undergrad|dropout|gap|student/i.test(o.education)
 
