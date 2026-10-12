@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS, SETTINGS } from './fields'
 import * as api from './api'
 import { LANGS, LEVELS, GOVS, PLACES, low, placesOf, govsOf, levelOk, category, maxSalary, rotational, gradsOnly, langLevels } from './lib'
@@ -14,11 +14,19 @@ function useSaved() {
   const toggle = (id) => setIds((p) => { const n = p.includes(id) ? p.filter((x) => x !== id) : [...p, id]; try { localStorage.setItem('hr_saved', JSON.stringify(n)) } catch {} return n })
   return [ids, toggle]
 }
+const PER_PAGE = 12
+function pageList(cur, pages) {
+  const set = new Set([1, pages, cur - 1, cur, cur + 1]); if (cur <= 3) [2, 3, 4].forEach((x) => set.add(x)); if (cur >= pages - 2) [pages - 1, pages - 2, pages - 3].forEach((x) => set.add(x))
+  const nums = [...set].filter((x) => x >= 1 && x <= pages).sort((a, b) => a - b), out = []
+  nums.forEach((x, i) => { if (i && x - nums[i - 1] > 1) out.push('…'); out.push(x) }); return out
+}
 const EMPTY = { q: '', cat: '', gov: '', area: '', lang: '', level: '', edu: '', shift: '', sort: 'new', saved: false }
 
 export default function App() {
   const [offers, setOffers] = useState([]), [settings, setSettings] = useState(api.DEFAULTS), [err, setErr] = useState('')
   const [session, setSession] = useState(null), [loading, setLoading] = useState(true), hash = useHash(), [saved, toggleSave] = useSaved()
+  const [f, setFilters] = useState(EMPTY), [page, setPage] = useState(1)
+  const setF = (n) => { setFilters(n); setPage(1) } // any filter change goes back to page 1
   const reload = async () => { try { setOffers(await api.loadOffers()); setSettings(await api.loadSettings()) } catch (e) { setErr(e.message) } setLoading(false) }
   useEffect(() => { reload(); api.auth.session().then(setSession); if (api.sb) api.sb.auth.onAuthStateChange((_e, s) => setSession(s)) }, [])
   useEffect(() => { document.title = settings.title + ' – Job Offers' }, [settings.title])
@@ -31,14 +39,14 @@ export default function App() {
       {err && <p className="err">{err}</p>}
       {isAdmin ? <><a className="back" href="#">← Back to offers</a><Admin {...{ offers, settings, session, reload }} /></>
         : id ? <Detail o={offers.find((x) => x.id === id)} n={settings.whatsapp} loading={loading} saved={saved} toggleSave={toggleSave} />
-        : <List offers={open} settings={settings} loading={loading} saved={saved} toggleSave={toggleSave} />}
+        : <List offers={open} settings={settings} loading={loading} saved={saved} toggleSave={toggleSave} f={f} setF={setF} page={page} setPage={setPage} />}
     </main>
     <footer className="wrap foot"><span>{settings.footer}</span><a href="#admin" className="adm">Admin</a></footer>
   </>)
 }
 
-function List({ offers, settings, loading, saved, toggleSave }) {
-  const [f, setF] = useState(EMPTY)
+function List({ offers, settings, loading, saved, toggleSave, f, setF, page, setPage }) {
+  const barRef = useRef(null)
   const set = (k) => (e) => setF({ ...f, [k]: e && e.target ? e.target.value : e })
   const cats = useMemo(() => { const m = {}; offers.forEach((o) => { const c = category(o); m[c] = (m[c] || 0) + 1 }); return m }, [offers])
   const areas = PLACES.filter((p) => !f.gov || p[0] === f.gov)
@@ -50,6 +58,9 @@ function List({ offers, settings, loading, saved, toggleSave }) {
       (!f.saved || saved.includes(o.id)) && (!f.q || low(Object.values(o).join(' ')).includes(low(f.q))))
     return f.sort === 'sal' ? [...r].sort((a, b) => maxSalary(b) - maxSalary(a)) : r
   }, [offers, f, saved])
+  const pages = Math.max(1, Math.ceil(list.length / PER_PAGE)), cur = Math.min(page, pages)
+  const shown = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE)
+  const go = (p) => { setPage(p); setTimeout(() => barRef.current && barRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0) }
   const dirty = Object.entries(f).some(([k, v]) => k !== 'sort' && v)
   return (<>
     <section className="hero"><h1>{settings.title}</h1><p>{settings.intro}</p>
@@ -66,9 +77,15 @@ function List({ offers, settings, loading, saved, toggleSave }) {
       <select value={f.shift} onChange={set('shift')}><option value="">Shift type</option><option value="fix">Fixed shift</option><option value="rot">Rotational</option></select>
       <select value={f.sort} onChange={set('sort')}><option value="new">Sort: default</option><option value="sal">Sort: highest salary</option></select></div>
     {f.level && <p className="hint">Showing offers that need level <b>{f.level}</b> or lower{f.lang ? ' in ' + f.lang : ''}. Offers that don't state a level are included.</p>}
-    <div className="row bar"><span className="muted">{loading ? 'Loading…' : `${list.length} offers found`}</span>
+    <div className="row bar" ref={barRef}><span className="muted">{loading ? 'Loading…' : list.length > PER_PAGE ? `Showing ${(cur - 1) * PER_PAGE + 1}–${Math.min(cur * PER_PAGE, list.length)} of ${list.length} offers` : `${list.length} offers found`}</span>
       {dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear filters</button>}</div>
-    <div className="grid">{list.map((o) => <Card key={o.id} o={o} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
+    <div className="grid">{shown.map((o) => <Card key={o.id} o={o} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
+    {pages > 1 && <nav className="pager" aria-label="Pages">
+      <button className="pg" disabled={cur === 1} onClick={() => go(cur - 1)}>‹ Prev</button>
+      {pageList(cur, pages).map((p, i) => p === '…' ? <span key={'e' + i} className="dots">…</span>
+        : <button key={p} className={p === cur ? 'pg on' : 'pg'} aria-current={p === cur ? 'page' : undefined} onClick={() => go(p)}>{p}</button>)}
+      <button className="pg" disabled={cur === pages} onClick={() => go(cur + 1)}>Next ›</button>
+      <span className="pinfo">Page {cur} of {pages}</span></nav>}
     {!loading && !list.length && <p className="empty">{f.saved && !saved.length ? 'You have not saved any offers yet. Tap the ♡ on any offer to keep it here.' : 'No offers match these filters. Try clearing some filters.'}</p>}
   </>)
 }

@@ -31,3 +31,10 @@ label{display:block;font-size:12px;font-weight:600;color:var(--m);margin:10px 0 
 .ico:hover{border-color:var(--t2);color:var(--t)}.ico.on,.btn.on{color:#e11d48;border-color:#fda4af;background:#fff1f2}
 .chip.heart small{color:#e11d48}.chip.heart.on{background:#e11d48;border-color:#e11d48}.chip.heart.on small{color:#ffe4e6}
 .dacts{margin-top:10px}
+
+.bar{scroll-margin-top:72px}
+.pager{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:26px 0 8px}
+.pg{min-width:40px;height:40px;padding:0 12px;border:1px solid var(--b);background:#fff;color:var(--tx);border-radius:10px;font:inherit;font-weight:600;cursor:pointer}
+.pg:hover:not(:disabled):not(.on){border-color:var(--t2);color:var(--t)}.pg.on{background:var(--t);border-color:var(--t);color:#fff}.pg:disabled{opacity:.4;cursor:default}
+.dots{color:var(--m);padding:0 2px}.pinfo{flex-basis:100%;text-align:center;color:var(--m);font-size:13px;margin-top:4px}
+@media(max-width:480px){.pg{min-width:36px;height:38px;padding:0 9px}}
