@@ -34,15 +34,6 @@ export const category = (o) => { const t = low(o.position + ' ' + o.company)
   if (/customer|support|advisor|survey|account/.test(t)) return 'Customer Service'
   return 'Other' }
 export const maxSalary = (o) => Math.max(0, ...((o.salary || '').match(/\d[\d,]*/g) || []).map((x) => +x.replace(/,/g, '')).filter((n) => n >= 5000 && n <= 100000))
-// Card / share headline prefix; older offers without the field default to "Up to"
-export const SALARY_LABELS = ['Up to', 'Net']
-export const salaryLabel = (o) => (SALARY_LABELS.includes(o.salary_label) ? o.salary_label : 'Up to')
-export const salaryHeadline = (o) => {
-  const m = maxSalary(o)
-  if (m) return `${salaryLabel(o)} ${m.toLocaleString()} EGP`
-  if (o.salary) return o.salary.slice(0, 40)
-  return 'Salary on request'
-}
 export const rotational = (o) => low(o.shifts).startsWith('rotational')
 export const gradsOnly = (o) => /graduate/i.test(o.education) && !/undergrad|dropout|gap|student/i.test(o.education)
 
@@ -104,3 +95,18 @@ export function sortOffers(list, mode, lang) {
 
 // text used by the visitors' search box (never includes internal notes)
 export const searchText = (o) => Object.entries(o).filter(([k]) => k !== 'internal' && k !== 'id').map(([, v]) => v).join(' ')
+
+// ---- salary type (Net / Gross) ----
+export const SALARY_TYPES = ['Net', 'Gross', 'Not specified']
+// Reads the first of the words "net" / "gross" in the salary text ('' when neither is written)
+export function detectSalaryType(o) {
+  const t = low(o.salary), n = t.search(/\bnet\b/), g = t.search(/\bgross\b/)
+  if (n < 0 && g < 0) return ''
+  return g < 0 || (n >= 0 && n < g) ? 'Net' : 'Gross'
+}
+// What the website shows: the admin's choice, else detected from the text. Returns 'Net' | 'Gross' | ''
+export function salaryTypeOf(o) {
+  if (o.salary_type === 'Net' || o.salary_type === 'Gross') return o.salary_type
+  if (o.salary_type === 'Not specified') return ''
+  return detectSalaryType(o)
+}

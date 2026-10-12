@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS } from './fields'
 import Admin from './Admin'
 import * as api from './api'
-import { LANGS, LEVELS, GOVS, PLACES, EDU, WORK_MODES, INTERVIEWS, SORTS, low, placesOf, govsOf, levelOk, eduOk, workMode, interviewMode, sortOffers, searchText, category, maxSalary, salaryHeadline, rotational, gradsOnly } from './lib'
+import { LANGS, LEVELS, GOVS, PLACES, EDU, WORK_MODES, INTERVIEWS, SORTS, low, placesOf, govsOf, levelOk, eduOk, workMode, interviewMode, sortOffers, searchText, salaryTypeOf, category, maxSalary, rotational, gradsOnly } from './lib'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
 const offerLink = (o) => location.href.split('#')[0] + '#/offer/' + o.id
-const shareText = (o) => { const m = maxSalary(o), pl = placesOf(o)
-  return `🔥 Job offer: ${o.position} at ${o.company}\n` + (m ? `💰 ${salaryHeadline(o)}\n` : '') + (pl.length ? `📍 ${pl.slice(0, 2).map((p) => p[1]).join(' / ')}\n` : '') + `\nDetails & how to apply:\n${offerLink(o)}` }
+const shareText = (o) => { const m = maxSalary(o), pl = placesOf(o), st = salaryTypeOf(o)
+  return `🔥 Job offer: ${o.position} at ${o.company}\n` + (m ? `💰 Up to ${m.toLocaleString()} EGP${st ? ' ' + st.toLowerCase() : ''}\n` : '') + (pl.length ? `📍 ${pl.slice(0, 2).map((p) => p[1]).join(' / ')}\n` : '') + `\nDetails & how to apply:\n${offerLink(o)}` }
 const shareHref = (o) => 'https://wa.me/?text=' + encodeURIComponent(shareText(o))
 function useSaved() {
   const [ids, setIds] = useState(() => { try { return JSON.parse(localStorage.getItem('hr_saved') || '[]') } catch { return [] } })
@@ -95,13 +95,13 @@ function List({ offers, settings, loading, saved, toggleSave, f, setF, page, set
 }
 
 function Card({ o, saved, onSave }) {
-  const pl = placesOf(o)
+  const m = maxSalary(o), pl = placesOf(o), st = salaryTypeOf(o)
   const where = pl.length > 2 ? `Multiple locations (${pl.length})` : pl.length ? pl.map((p) => p[1]).join(' / ') : (o.location || '').split(/[;(,]/)[0]
   const lang = !o.language ? '' : o.language.length > 34 ? 'Multiple languages' : o.language
   return (<div className="offer">
     <a className="stretch" href={'#/offer/' + o.id}>
       <span className="co">{o.company}</span><h3>{o.position}</h3>
-      <div className="money">{salaryHeadline(o)}</div>
+      <div className="money">{m ? `Up to ${m.toLocaleString()} EGP` : o.salary ? o.salary.slice(0, 40) : 'Salary on request'}{st && <span className={'stype ' + st.toLowerCase()}>{st}</span>}</div>
       <div className="tags"><span>📍 {where}</span>{lang && <span>🗣️ {lang}</span>}
         <span>{rotational(o) ? '🔄 Rotational' : '🕐 Fixed shift'}</span><span>{{ 'On-site': '🏢 On-site', 'Work from home': '🏠 Work from home', Hybrid: '🔀 Hybrid' }[workMode(o)]}</span>{gradsOnly(o) && <span>🎓 Graduates</span>}{/female/i.test(o.position) && <span>👩 Females only</span>}</div>
       <span className="more">View details →</span></a>
@@ -114,7 +114,7 @@ function Card({ o, saved, onSave }) {
 function Detail({ o, n, loading, saved, toggleSave }) {
   const [copied, setCopied] = useState(false)
   if (!o) return <><a className="back" href="#">← All offers</a><p className="empty">{loading ? 'Loading…' : 'This offer is no longer available.'}</p></>
-  const Sec = ({ t, keys }) => { const rows = keys.map((k) => [FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? workMode(o) : o[k]]).filter((r) => r[1])
+  const Sec = ({ t, keys }) => { const rows = keys.map((k) => [FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? workMode(o) : k === 'salary_type' ? salaryTypeOf(o) : o[k]]).filter((r) => r[1])
     return rows.length ? <section className="card"><h3>{t}</h3><dl>{rows.map(([l, v]) => <div key={l}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null }
   const msg = `Hello, I'd like to apply for: ${o.position} at ${o.company}${o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''}`
   return (<>
@@ -127,7 +127,7 @@ function Detail({ o, n, loading, saved, toggleSave }) {
         <a className="btn" href={shareHref(o)} target="_blank" rel="noreferrer">↗ Share on WhatsApp</a>
         <button className="btn" onClick={() => navigator.clipboard.writeText(offerLink(o)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }, () => {})}>{copied ? 'Copied ✔' : '🔗 Copy link'}</button>
       </div></div>
-    <Sec t="Salary & benefits" keys={['salary', 'benefits', 'transport']} />
+    <Sec t="Salary & benefits" keys={['salary', 'salary_type', 'benefits', 'transport']} />
     <Sec t="Schedule" keys={['shifts', 'work_mode', 'interview_type', 'interview_time']} />
     <Sec t="Requirements" keys={['education', 'age', 'nationality', 'military', 'experience', 'language']} />
     <Sec t="More info" keys={['steps', 'notes']} />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS, SECTIONS, HINTS, SETTINGS } from './fields'
 import * as api from './api'
-import { companyKey, low } from './lib'
+import { companyKey, low, detectSalaryType, salaryTypeOf, SALARY_TYPES } from './lib'
 
 const field = (k) => FIELDS.find((x) => x[0] === k)
 const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
@@ -44,12 +44,14 @@ function OffersTab({ offers, run, setEdit }) {
     <div className="tools">
       <input placeholder="🔍 Search offers…" value={q} onChange={(e) => setQ(e.target.value)} />
       <select value={st} onChange={(e) => setSt(e.target.value)}><option value="">All statuses</option><option>Open</option><option>Closed</option></select>
-      <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site', salary_label: 'Up to' })}>+ New offer</button></div>
+      <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site' })}>+ New offer</button></div>
     <div className="selbar">
       <label className="chk"><input type="checkbox" checked={allOn} onChange={() => setSel(allOn ? [] : list.map((o) => o.id))} /> {chosen.length ? `${chosen.length} selected` : `Select all (${list.length})`}</label>
       {chosen.length > 0 && <div className="row">
         <button className="btn sm" onClick={() => bulk(() => api.saveMany(chosen.map((o) => ({ ...o, status: 'Open' }))), 'Reopened ✔')}>Reopen</button>
         <button className="btn sm" onClick={() => bulk(() => api.saveMany(chosen.map((o) => ({ ...o, status: 'Closed' }))), 'Closed ✔')}>Close</button>
+        <select className="btn sm" aria-label="Set salary type" value="" onChange={(e) => { const t = e.target.value; if (t) bulk(() => api.saveMany(chosen.map((o) => ({ ...o, salary_type: t }))), `Salary type set to ${t} ✔`) }}>
+          <option value="">Salary type…</option>{SALARY_TYPES.map((t) => <option key={t}>{t}</option>)}</select>
         <button className="btn sm" title="Moves the Notes text into Internal notes so visitors no longer see it"
           onClick={() => confirm('Move the visible Notes of the selected offers into Internal notes (hidden from visitors)?') && bulk(() => api.saveMany(chosen.filter((o) => o.notes).map((o) => ({ ...o, internal: [o.internal, o.notes].filter(Boolean).join('\n'), notes: '' }))), 'Notes hidden from visitors ✔')}>Hide notes</button>
         <button className="btn sm del" onClick={() => confirm(`Delete ${chosen.length} offer(s)? This cannot be undone.`) && bulk(() => api.deleteMany(chosen.map((o) => o.id)), 'Deleted ✔')}>Delete</button></div>}
@@ -58,7 +60,7 @@ function OffersTab({ offers, run, setEdit }) {
       <div className="gh"><b>{g.name}</b><span>{g.items.length}</span></div>
       {g.items.map((o) => <div className={'arow' + (o.status === 'Closed' ? ' closed' : '')} key={o.id}>
         <input type="checkbox" aria-label="Select" checked={sel.includes(o.id)} onChange={() => toggle(o.id)} />
-        <button className="ainfo" onClick={() => setEdit(o)}><b>{o.position}</b><small>{[o.location, o.salary].filter(Boolean).join(' · ').slice(0, 90)}</small></button>
+        <button className="ainfo" onClick={() => setEdit(o)}><b>{o.position}{salaryTypeOf(o) && <span className={'stype ' + salaryTypeOf(o).toLowerCase()}>{salaryTypeOf(o)}</span>}</b><small>{[o.location, o.salary].filter(Boolean).join(' · ').slice(0, 90)}</small></button>
         <button className={'pill ' + (o.status === 'Closed' ? 'off' : 'on')} onClick={() => flip(o)} title="Click to switch">{o.status === 'Closed' ? 'Closed' : 'Open'}</button>
         <div className="row acts2"><button className="btn sm" onClick={() => setEdit(o)}>Edit</button><button className="btn sm" onClick={() => dup(o)} title="Create a copy (same company)">Duplicate</button><button className="btn sm del" onClick={() => del(o)}>Delete</button></div>
       </div>)}
@@ -68,9 +70,12 @@ function OffersTab({ offers, run, setEdit }) {
 }
 
 function OfferForm({ o, offers, run, onClose }) {
-  const [v, setV] = useState(o), [err, setErr] = useState('')
+  const [v, setV] = useState(() => ({ ...o, salary_type: o.salary_type || detectSalaryType(o) || 'Not specified' })), [err, setErr] = useState('')
+  const [typeChosen, setTypeChosen] = useState(!!o.salary_type) // once the admin picks Net/Gross, typing in the salary box no longer changes it
   useEffect(() => { const h = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', h); return () => removeEventListener('keydown', h) }, [])
-  const set = (k) => (e) => setV({ ...v, [k]: e.target.value })
+  const set = (k) => (e) => { const val = e.target.value
+    if (k === 'salary_type') setTypeChosen(true)
+    setV((p) => { const n = { ...p, [k]: val }; if (k === 'salary' && !typeChosen) { const d = detectSalaryType(n); if (d) n.salary_type = d } return n }) }
   const save = () => {
     const c = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, typeof x === 'string' ? x.trim() : x]))
     if (!c.company || !c.position) return setErr('Company and Position are required.')
