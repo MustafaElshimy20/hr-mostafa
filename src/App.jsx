@@ -3,7 +3,7 @@ import { FIELDS } from './fields'
 import Admin from './Admin'
 import * as api from './api'
 import { SORTS, sortOffers, salaryLabel, gradsOnly } from './lib'
-import { normTax, valuesOf, filterById, matches, facetCounts, allCategories, categoriesOf, levelRank, optLabel } from './taxonomy'
+import { normTax, valuesOf, filterById, matches, facetCounts, levelRank, optLabel } from './taxonomy'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
@@ -24,7 +24,7 @@ function pageList(cur, pages) {
   const nums = [...set].filter((x) => x >= 1 && x <= pages).sort((a, b) => a - b), out = []
   nums.forEach((x, i) => { if (i && x - nums[i - 1] > 1) out.push('…'); out.push(x) }); return out
 }
-const EMPTY = { q: '', cat: '', sel: {}, sort: 'new', saved: false }
+const EMPTY = { q: '', sel: {}, sort: 'new', saved: false }
 
 export default function App() {
   const [offers, setOffers] = useState([]), [tax, setTax] = useState(() => normTax(null)), [settings, setSettings] = useState(api.DEFAULTS), [err, setErr] = useState('')
@@ -57,7 +57,6 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
   const setSort = (e) => setF({ ...f, sort: e.target.value })
   const pick = (fl, v) => { const sel = { ...f.sel, [fl.id]: v }; tax.filters.forEach((c) => { if (c.dependsOn === fl.id) delete sel[c.id] }); setF({ ...f, sel }) } // changing a parent (e.g. governorate) resets its children (area)
   const facets = useMemo(() => facetCounts(offers, f, tax, ctx), [offers, f, tax, ctx])
-  const cats = useMemo(() => allCategories(offers, tax).filter((c) => offers.some((o) => categoriesOf(o, tax).includes(c))), [offers, tax]) // a category with no open offers is hidden
   const langId = (tax.filters.find((x) => x.kind === 'level') || {}).langFilter
   const list = useMemo(() => {
     const lang = f.sel[langId]
@@ -67,23 +66,35 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
   const pages = Math.max(1, Math.ceil(list.length / PER_PAGE)), cur = Math.min(page, pages)
   const shown = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE)
   const go = (p) => { setPage(p); setTimeout(() => barRef.current && barRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0) }
-  const dirty = !!(f.q || f.cat || f.saved || Object.values(f.sel).some(Boolean))
+  const dirty = !!(f.q || f.saved || Object.values(f.sel).some(Boolean))
   const lvl = tax.filters.find((x) => x.kind === 'level'), lvlSel = lvl && f.sel[lvl.id]
+  const activeFilters = Object.values(f.sel).filter(Boolean).length
   return (<>
-    <section className="hero"><h1>{settings.title}</h1><p>{settings.intro}</p>
-      <input className="big" placeholder="🔍 Search by company, job, area, language…" value={f.q} onChange={setQ} /></section>
-    <div className="chips"><button className={!f.cat && !f.saved ? 'chip on' : 'chip'} onClick={() => setF({ ...f, cat: '', saved: false })}>All <small>{facets.all}</small></button>
-      <button className={f.saved ? 'chip on heart' : 'chip heart'} onClick={() => setF({ ...f, saved: !f.saved })}>♥ Saved <small>{offers.filter((o) => saved.includes(o.id)).length}</small></button>
-      {cats.map((c) => <button key={c} className={f.cat === c ? 'chip on' : 'chip'} onClick={() => setF({ ...f, cat: c, saved: false })}>{c} <small>{facets.cat[c] || 0}</small></button>)}</div>
-    <div className="filters">
-      {shown_filters.map((fl) => { const cur = f.sel[fl.id] || '', parent = fl.dependsOn && f.sel[fl.dependsOn]
-        const opts = fl.options.filter((x) => !fl.dependsOn || !parent || x.parent === parent)
-        return <select key={fl.id} aria-label={fl.label} value={cur} onChange={(e) => pick(fl, e.target.value)}>
-          <option value="">{parent ? `All ${fl.label.toLowerCase()}${/s$/i.test(fl.label) ? '' : 's'} in ${parent}` : fl.label}</option>
-          {opts.map((x) => { const n = (facets.opt[fl.id] || {})[x.v] || 0; return <option key={x.v} value={x.v} disabled={!n && x.v !== cur}>{optLabel(x)} ({n})</option> })}</select> })}</div>
+    <section className="hero discover"><div className="searchcard">
+      <h1>{settings.title}</h1>
+      <p>{settings.intro}</p>
+      <input className="big" placeholder="Search by job title, company, language, location, or keywords" value={f.q} onChange={setQ} />
+      <div className="searchmeta">
+        <span className="muted">Search works across job titles, companies, locations, languages, and the key details inside each offer.</span>
+        <div className="row toolbtns">
+          <button className={f.saved ? 'btn on' : 'btn'} onClick={() => setF({ ...f, saved: !f.saved })}>{f.saved ? '♥ Saved only' : '♡ Saved only'} ({offers.filter((o) => saved.includes(o.id)).length})</button>
+          {dirty && <button className="btn" onClick={() => setF(EMPTY)}>Reset all</button>}
+        </div>
+      </div></div></section>
+    <section className="filterpanel">
+      <div className="filterhead"><div><h2>Filters</h2><p>Combine filters to narrow the list and find the most suitable offers.</p></div>
+        <span className="muted">{shown_filters.length ? `${shown_filters.length} filters available` : 'No filters available yet.'}</span></div>
+      {shown_filters.length ? <div className="filters">
+        {shown_filters.map((fl) => { const cur = f.sel[fl.id] || '', parent = fl.dependsOn && f.sel[fl.dependsOn]
+          const opts = fl.options.filter((x) => !fl.dependsOn || !parent || x.parent === parent)
+          return <select key={fl.id} aria-label={fl.label} value={cur} onChange={(e) => pick(fl, e.target.value)}>
+            <option value="">{parent ? `All ${fl.label.toLowerCase()}${/s$/i.test(fl.label) ? '' : 's'} in ${parent}` : fl.label}</option>
+            {opts.map((x) => { const n = (facets.opt[fl.id] || {})[x.v] || 0; return <option key={x.v} value={x.v} disabled={!n && x.v !== cur}>{optLabel(x)} ({n})</option> })}</select> })}</div>
+        : <p className="muted">Add visible filter values in the Admin Dashboard to help visitors refine the offer list.</p>}
+    </section>
     {lvlSel && <p className="hint">Showing offers that need level <b>{lvlSel}</b> or lower{f.sel[langId] ? ' in ' + f.sel[langId] : ''}. Offers that don't state a level are included.</p>}
     <div className="row bar" ref={barRef}><span className="muted">{loading ? 'Loading…' : list.length > PER_PAGE ? `Showing ${(cur - 1) * PER_PAGE + 1}–${Math.min(cur * PER_PAGE, list.length)} of ${list.length} offers` : `${list.length} offers found`}</span>
-      <span className="grow" />{dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear filters</button>}
+      <span className="grow" />{!!activeFilters && <span className="muted">{activeFilters} filter{activeFilters === 1 ? '' : 's'} active</span>}{dirty && <button className="link" onClick={() => setF(EMPTY)}>Reset all filters</button>}
       <select className="sortsel" aria-label="Sort offers" value={f.sort} onChange={setSort}>{SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
     <div className="grid">{shown.map((o) => <Card key={o.id} o={o} tax={tax} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
     {pages > 1 && <nav className="pager" aria-label="Pages">
@@ -92,7 +103,7 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
         : <button key={p} className={p === cur ? 'pg on' : 'pg'} aria-current={p === cur ? 'page' : undefined} onClick={() => go(p)}>{p}</button>)}
       <button className="pg" disabled={cur === pages} onClick={() => go(cur + 1)}>Next ›</button>
       <span className="pinfo">Page {cur} of {pages}</span></nav>}
-    {!loading && !list.length && <p className="empty">{f.saved && !saved.length ? 'You have not saved any offers yet. Tap the ♡ on any offer to keep it here.' : 'No offers match these filters. Try clearing some filters.'}</p>}
+    {!loading && !list.length && <p className="empty">{f.saved && !saved.length ? 'You have not saved any offers yet. Tap the ♡ on any offer to keep it here.' : 'No results found. Try broader keywords or reset one or more filters to see more offers.'}</p>}
   </>)
 }
 
@@ -138,4 +149,3 @@ function Detail({ tax, o, n, loading, saved, toggleSave }) {
     <div className="sticky"><a className="btn wa big" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply on WhatsApp</a></div>
   </>)
 }
-

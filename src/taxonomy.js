@@ -152,7 +152,7 @@ export const allCategories = (offers, tax) => { const l = [...tax.categories]; o
 // ---------- search ----------
 const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category', 'categories'])
 const squash = (s) => norm(s).replace(/(\d),(?=\d)/g, '$1')
-const blob = (o, tax) => memo(o, tax, 'blob', () => squash([...Object.entries(o).filter(([k]) => !SKIP.has(k)).map(([, v]) => v), ...categoriesOf(o, tax), ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')))
+const blob = (o, tax) => memo(o, tax, 'blob', () => squash([...Object.entries(o).filter(([k]) => !SKIP.has(k)).map(([, v]) => v), ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')))
 const tokens = (q) => squash(q).split(/[\s,;،]+/).filter(Boolean)
 
 // ---------- matching ----------
@@ -162,25 +162,23 @@ export function filterOk(o, fl, v, sel, tax) {
   const vals = valuesOf(o, fl, tax)
   return vals.length ? vals.includes(v) : !!fl.unrestricted
 }
-// f = { q, cat, sel: { filterId: value }, saved }, ctx = { saved: [ids] }
+// f = { q, sel: { filterId: value }, saved }, ctx = { saved: [ids] }
 export function matches(o, f, tax, ctx) {
   if (f.saved && !(ctx.saved || []).includes(o.id)) return false
-  if (f.cat && !categoriesOf(o, tax).includes(f.cat)) return false
   for (const fl of tax.filters) if (!filterOk(o, fl, f.sel[fl.id], f.sel, tax)) return false
   if (f.q) { const b = blob(o, tax); if (!tokens(f.q).every((t) => b.includes(t))) return false }
   return true
 }
-// exact numbers for every chip / option: "how many results if I picked this one (keeping my other choices)?"
+// exact numbers for every option: "how many results if I picked this one (keeping my other choices)?"
 export function facetCounts(offers, f, tax, ctx) {
-  const cat = {}, opt = {}
-  const noCat = offers.filter((o) => matches(o, { ...f, cat: '' }, tax, ctx))
-  noCat.forEach((o) => categoriesOf(o, tax).forEach((c) => { cat[c] = (cat[c] || 0) + 1 }))
+  const opt = {}
+  const baseList = offers.filter((o) => matches(o, f, tax, ctx))
   tax.filters.forEach((fl) => {
     const base = offers.filter((o) => matches(o, { ...f, sel: { ...f.sel, [fl.id]: '' } }, tax, ctx)), m = {}
     fl.options.forEach((x) => { const sel = { ...f.sel, [fl.id]: x.v }; m[x.v] = base.filter((o) => filterOk(o, fl, x.v, sel, tax)).length })
     opt[fl.id] = m
   })
-  return { all: noCat.length, cat, opt }
+  return { all: baseList.length, opt }
 }
 
 // ---------- small helpers for the admin ----------
