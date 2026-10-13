@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FIELDS } from './fields'
 import * as api from './api'
-import { norm, optLabel, valuesOf, categoriesOf, isAutoCategory, allCategories, withCats, withTags, dropTags, hasDetector, defaultTax, levelNeeds, LV } from './taxonomy'
+import { norm, optLabel, valuesOf, withTags, dropTags, hasDetector, defaultTax, levelNeeds, LV } from './taxonomy'
 
 // text box that saves when you leave it / press Enter. onCommit may return false to reject (the box then goes back).
 function Inline({ value, onCommit, placeholder, className, type }) {
@@ -12,54 +12,6 @@ function Inline({ value, onCommit, placeholder, className, type }) {
 }
 const dupe = (list, name, except) => list.some((x) => norm(x) === norm(name) && x !== except)
 const FIELD_CHOICES = FIELDS.filter(([k]) => !['status', 'internal', 'link', 'salary_type', 'notes'].includes(k))
-
-// ================= CATEGORIES =================
-export function CategoriesTab({ offers, tax, run, say }) {
-  const [name, setName] = useState(''), [del, setDel] = useState(null), [target, setTarget] = useState('')
-  const counts = useMemo(() => { const m = {}; offers.forEach((o) => categoriesOf(o, tax).forEach((c) => { m[c] = (m[c] || 0) + 1 })); return m }, [offers, tax])
-  const auto = offers.filter(isAutoCategory).length
-  const list = allCategories(offers, tax)
-  const saveCats = (categories, ok, offerChanges = []) => run(async () => { if (offerChanges.length) await api.saveMany(offerChanges); await api.saveTaxonomy({ ...tax, categories }) }, ok)
-  const add = () => { const n = name.trim(); if (!n) return; if (n.length > 40) return say('Keep the name under 40 characters.', true)
-    if (dupe(list, n)) return say('That category already exists.', true)
-    const i = tax.categories.findIndex((c) => norm(c) === 'other'), cats = [...tax.categories]; cats.splice(i < 0 ? cats.length : i, 0, n)
-    setName(''); saveCats(cats, `Category “${n}” added ✔`) }
-  const rename = (old, nv) => { if (!nv) return false; if (nv.length > 40) { say('Keep the name under 40 characters.', true); return false }
-    const clash = list.find((c) => c !== old && norm(c) === norm(nv))
-    if (clash && !confirm(`“${clash}” already exists. Merge “${old}” into it? (${counts[old] || 0} offers will move.)`)) return false
-    const moved = offers.filter((o) => categoriesOf(o, tax).includes(old)).map((o) => withCats(o, categoriesOf(o, tax).map((c) => (c === old ? clash || nv : c))))
-    const cats = tax.categories.map((c) => (c === old ? (clash || nv) : c)).filter((c, i, a) => a.findIndex((x) => norm(x) === norm(c)) === i)
-    if (!cats.some((c) => norm(c) === norm(clash || nv))) cats.push(clash || nv)
-    saveCats(cats, 'Category renamed ✔', moved) }
-  const move = (c, d) => { const a = [...tax.categories], i = a.indexOf(c), j = i + d; if (i < 0 || j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; saveCats(a, 'Order saved ✔') }
-  const remove = (c) => { const n = counts[c] || 0
-    if (n) { setDel(c); setTarget(''); return }
-    if (confirm(`Delete the category “${c}”?`)) saveCats(tax.categories.filter((x) => x !== c), 'Category deleted ✔') }
-  const reassignDelete = () => { if (!target) return say('Choose where the offers should go first.', true)
-    const moved = offers.filter((o) => categoriesOf(o, tax).includes(del)).map((o) => withCats(o, categoriesOf(o, tax).map((c) => (c === del ? target : c))))
-    saveCats(tax.categories.filter((x) => x !== del), `${moved.length} offers moved to “${target}”, category deleted ✔`, moved); setDel(null) }
-  const pin = () => confirm(`Save the automatic category into the ${auto} offer(s) that don't have one chosen? (Nothing changes on the site; it just stops guessing.)`) &&
-    run(() => api.saveMany(offers.filter(isAutoCategory).map((o) => withCats(o, categoriesOf(o, tax)))), 'Categories saved into the offers ✔')
-  return (<div className="sgrid">
-    <section className="acard"><h3>Categories</h3>
-      <p className="muted small">These are the chips at the top of the website. A category appears there as soon as at least one open offer is in it. An offer can be in several categories. Choose them in the offer’s edit form, or select offers in the Offers tab and use “Classify”.</p>
-      <div className="addrow"><input placeholder="New category, e.g. Graphic Designer" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="btn pri" onClick={add}>+ Add category</button></div>
-      <div className="tlist">{list.map((c) => { const locked = norm(c) === 'other', listed = tax.categories.includes(c)
-        return <div className="trow" key={c}>
-          <span className="ord"><button className="mini" disabled={!listed || tax.categories[0] === c} onClick={() => move(c, -1)} aria-label="Move up">▲</button><button className="mini" disabled={!listed || tax.categories[tax.categories.length - 1] === c} onClick={() => move(c, 1)} aria-label="Move down">▼</button></span>
-          {locked ? <b className="grow">{c} <small className="muted">(catch-all, can’t be changed)</small></b> : <Inline className="grow plain" value={c} onCommit={(v) => rename(c, v)} />}
-          <span className="count">{counts[c] || 0} offers</span>
-          {!locked && <button className="btn sm del" onClick={() => remove(c)}>Delete</button>}
-        </div> })}</div>
-      {auto > 0 && <p className="muted small">{auto} offer(s) have no category chosen, so the site guesses it from the job title. <button className="link" onClick={pin}>Save the guesses into the offers</button> to lock them in.</p>}
-    </section>
-    {del && <div className="modal" onMouseDown={(e) => e.target === e.currentTarget && setDel(null)}><div className="panel small-panel" role="dialog" aria-modal="true">
-      <div className="ph"><h3>Delete “{del}”</h3><button className="x" onClick={() => setDel(null)} aria-label="Close">✕</button></div>
-      <div className="pb"><p><b>{counts[del]}</b> offer(s) are in this category. A category that is still in use can’t be deleted — move those offers first.</p>
-        <label>Move them to<select value={target} onChange={(e) => setTarget(e.target.value)}><option value="">Choose a category…</option>{list.filter((c) => c !== del).map((c) => <option key={c}>{c}</option>)}</select></label></div>
-      <div className="pf"><span className="grow" /><button className="btn" onClick={() => setDel(null)}>Cancel</button><button className="btn pri" onClick={reassignDelete}>Move offers & delete</button></div></div></div>}
-  </div>)
-}
 
 // ================= FILTERS =================
 export function FiltersTab({ offers, tax, run, say }) {
@@ -130,16 +82,9 @@ export function FiltersTab({ offers, tax, run, say }) {
   </div>)
 }
 
-// ================= in the offer form: category + filter values =================
+// ================= in the offer form: filter values =================
 export function TagEditor({ v, setV, tx, setTx }) {
-  const [adding, setAdding] = useState({}), [newCat, setNewCat] = useState('')
-  const cats = categoriesOf(v, tx)
-  const setCats = (list) => setV((p) => withCats(p, list))
-  const toggleCat = (c) => setCats(cats.includes(c) ? cats.filter((x) => x !== c) : [...(isAutoCategory(v) ? [] : cats), c])
-  const addCat = () => { const t = newCat.trim(); if (!t) return; if (t.length > 40) return
-    const have = tx.categories.find((x) => norm(x) === norm(t)), name = have || t
-    if (!have) setTx((p) => { const i = p.categories.findIndex((x) => norm(x) === 'other'), l = [...p.categories]; l.splice(i < 0 ? l.length : i, 0, name); return { ...p, categories: l } })
-    setCats([...new Set([...(isAutoCategory(v) ? [] : cats), name])]); setNewCat('') }
+  const [adding, setAdding] = useState({})
   const setTags = (id, vals) => setV((p) => (vals === null ? dropTags(p, id) : withTags(p, id, vals)))
   const curOf = (fl) => { if (fl.kind !== 'level' || Array.isArray(v.tags && v.tags[fl.id])) return valuesOf(v, fl, tx); const r = Math.max(-1, ...Object.values(levelNeeds(v, tx)).map((x) => LV.indexOf(x))); return r >= 0 && fl.options.some((x) => x.v === LV[r]) ? [LV[r]] : [] }
   const toggle = (fl, val) => { const cur = curOf(fl), single = fl.kind === 'level' || fl.pick === 'first'
@@ -149,11 +94,8 @@ export function TagEditor({ v, setV, tx, setTx }) {
     if (!have) setTx((p) => ({ ...p, filters: p.filters.map((x) => (x.id === fl.id ? { ...x, options: [...x.options, { v: val, kw: [] }] } : x)) }))
     const cur = valuesOf(v, fl, tx)
     setTags(fl.id, fl.pick === 'first' ? [val] : [...new Set([...cur, val])]); setAdding({ ...adding, [fl.id]: '' }) }
-  return (<fieldset><legend>Category & filters</legend>
-    <div className="tagrow"><div className="tagh"><b>Categories</b><small className="muted">{isAutoCategory(v) ? 'automatic (guessed from the job title)' : 'set by you — pick as many as fit'}</small>
-      {!isAutoCategory(v) && <button className="link small" onClick={() => setV((p) => { const n = { ...p }; delete n.categories; delete n.category; return n })}>Back to automatic</button>}</div>
-      <div className="tagchips">{tx.categories.filter((c) => norm(c) !== 'other' || cats.includes(c)).map((c) => <button type="button" key={c} className={'tchip' + (cats.includes(c) ? ' on' : '')} onClick={() => toggleCat(c)}>{c}</button>)}
-        <span className="tadd"><input aria-label="New category" placeholder="+ new category" value={newCat} onChange={(e) => setNewCat(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCat() } }} />{newCat.trim() && <button type="button" className="btn sm" onClick={addCat}>Add</button>}</span></div></div>
+  return (<fieldset><legend>Filters</legend>
+    <p className="muted small">Tick the values this offer belongs to. Filters left on “automatic” are read from the offer’s text; what you tick here always wins.</p>
     {tx.filters.map((fl) => { const explicit = Array.isArray(v.tags && v.tags[fl.id]), cur = curOf(fl)
       const gov = fl.dependsOn && valuesOf(v, tx.filters.find((g) => g.id === fl.dependsOn) || { options: [], id: '-' }, tx)
       const opts = fl.options.filter((x) => !fl.dependsOn || !x.parent || !gov || !gov.length || gov.includes(x.parent) || cur.includes(x.v))
@@ -170,7 +112,7 @@ export function TagEditor({ v, setV, tx, setTx }) {
 
 // ================= bulk classify (selected offers) =================
 export function Classify({ chosen, tax, run, onClose }) {
-  const [cat, setCat] = useState(''), [fid, setFid] = useState(''), [val, setVal] = useState('')
+  const [fid, setFid] = useState(''), [val, setVal] = useState('')
   const fl = tax.filters.find((f) => f.id === fid)
   const apply = (fn, ok) => run(() => api.saveMany(chosen.map(fn)), ok).then(onClose)
   const addTo = () => apply((o) => { const cur = valuesOf(o, fl, tax); return withTags(o, fl.id, cur.includes(val) ? cur : (fl.pick === 'first' || fl.kind === 'level') ? [val] : [...cur, val]) }, `“${val}” added to ${chosen.length} offer(s) ✔`)
@@ -178,10 +120,6 @@ export function Classify({ chosen, tax, run, onClose }) {
   return (<div className="modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><div className="panel small-panel" role="dialog" aria-modal="true">
     <div className="ph"><h3>Classify {chosen.length} offer(s)</h3><button className="x" onClick={onClose} aria-label="Close">✕</button></div>
     <div className="pb">
-      <fieldset><legend>Category</legend><label>Category<select value={cat} onChange={(e) => setCat(e.target.value)}><option value="">Choose a category…</option>{allCategories([], tax).map((c) => <option key={c}>{c}</option>)}</select></label>
-        <div className="row" style={{ marginTop: 12 }}><button className="btn pri" disabled={!cat} onClick={() => apply((o) => withCats(o, [...(isAutoCategory(o) ? [] : categoriesOf(o, tax)), cat]), `Added to “${cat}” ✔`)}>Add to this category</button>
-          <button className="btn" disabled={!cat} onClick={() => apply((o) => withCats(o, categoriesOf(o, tax).filter((c) => c !== cat)), `Removed from “${cat}” ✔`)}>Remove from it</button>
-          <button className="btn" disabled={!cat} onClick={() => apply((o) => withCats(o, [cat]), `Moved to “${cat}” only ✔`)}>Make it the only one</button></div></fieldset>
       <fieldset><legend>Filter value</legend>
         <label>Filter<select value={fid} onChange={(e) => { setFid(e.target.value); setVal('') }}><option value="">Choose a filter…</option>{tax.filters.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</select></label>
         {fl && <label>Value<select value={val} onChange={(e) => setVal(e.target.value)}><option value="">Choose a value…</option>{fl.options.map((x) => <option key={x.v} value={x.v}>{optLabel(x)}</option>)}</select></label>}

@@ -3,7 +3,7 @@ import { FIELDS } from './fields'
 import Admin from './Admin'
 import * as api from './api'
 import { SORTS, sortOffers, salaryLabel, gradsOnly } from './lib'
-import { normTax, valuesOf, filterById, matches, facetCounts, allCategories, categoriesOf, levelRank, optLabel } from './taxonomy'
+import { normTax, valuesOf, filterById, matches, facetCounts, levelRank, optLabel } from './taxonomy'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
@@ -24,7 +24,7 @@ function pageList(cur, pages) {
   const nums = [...set].filter((x) => x >= 1 && x <= pages).sort((a, b) => a - b), out = []
   nums.forEach((x, i) => { if (i && x - nums[i - 1] > 1) out.push('…'); out.push(x) }); return out
 }
-const EMPTY = { q: '', cat: '', sel: {}, sort: 'new', saved: false }
+const EMPTY = { q: '', sel: {}, sort: 'new', saved: false }
 
 export default function App() {
   const [offers, setOffers] = useState([]), [tax, setTax] = useState(() => normTax(null)), [settings, setSettings] = useState(api.DEFAULTS), [err, setErr] = useState('')
@@ -51,40 +51,47 @@ export default function App() {
 }
 
 function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page, setPage }) {
-  const barRef = useRef(null)
+  const barRef = useRef(null), [fOpen, setFOpen] = useState(false) // filters are collapsible on phones
   const ctx = useMemo(() => ({ saved }), [saved])
-  const setQ = (e) => setF({ ...f, q: e.target.value })
-  const setSort = (e) => setF({ ...f, sort: e.target.value })
   const pick = (fl, v) => { const sel = { ...f.sel, [fl.id]: v }; tax.filters.forEach((c) => { if (c.dependsOn === fl.id) delete sel[c.id] }); setF({ ...f, sel }) } // changing a parent (e.g. governorate) resets its children (area)
   const facets = useMemo(() => facetCounts(offers, f, tax, ctx), [offers, f, tax, ctx])
-  const cats = useMemo(() => allCategories(offers, tax).filter((c) => offers.some((o) => categoriesOf(o, tax).includes(c))), [offers, tax]) // a category with no open offers is hidden
   const langId = (tax.filters.find((x) => x.kind === 'level') || {}).langFilter
   const list = useMemo(() => {
     const lang = f.sel[langId]
     return sortOffers(offers.filter((o) => matches(o, f, tax, ctx)), f.sort, (o) => levelRank(o, tax, lang))
   }, [offers, f, tax, ctx, langId])
-  const shown_filters = tax.filters.filter((fl) => fl.visible && (fl.kind === 'level' || fl.options.length))
+  const shownFilters = tax.filters.filter((fl) => fl.visible && (fl.kind === 'level' || fl.options.length))
   const pages = Math.max(1, Math.ceil(list.length / PER_PAGE)), cur = Math.min(page, pages)
   const shown = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE)
   const go = (p) => { setPage(p); setTimeout(() => barRef.current && barRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0) }
-  const dirty = !!(f.q || f.cat || f.saved || Object.values(f.sel).some(Boolean))
+  const active = shownFilters.filter((fl) => f.sel[fl.id]) // the choices currently applied
+  const dirty = !!(f.q || f.saved || Object.values(f.sel).some(Boolean))
   const lvl = tax.filters.find((x) => x.kind === 'level'), lvlSel = lvl && f.sel[lvl.id]
   return (<>
     <section className="hero"><h1>{settings.title}</h1><p>{settings.intro}</p>
-      <input className="big" placeholder="🔍 Search by company, job, area, language…" value={f.q} onChange={setQ} /></section>
-    <div className="chips"><button className={!f.cat && !f.saved ? 'chip on' : 'chip'} onClick={() => setF({ ...f, cat: '', saved: false })}>All <small>{facets.all}</small></button>
-      <button className={f.saved ? 'chip on heart' : 'chip heart'} onClick={() => setF({ ...f, saved: !f.saved })}>♥ Saved <small>{offers.filter((o) => saved.includes(o.id)).length}</small></button>
-      {cats.map((c) => <button key={c} className={f.cat === c ? 'chip on' : 'chip'} onClick={() => setF({ ...f, cat: c, saved: false })}>{c} <small>{facets.cat[c] || 0}</small></button>)}</div>
-    <div className="filters">
-      {shown_filters.map((fl) => { const cur = f.sel[fl.id] || '', parent = fl.dependsOn && f.sel[fl.dependsOn]
-        const opts = fl.options.filter((x) => !fl.dependsOn || !parent || x.parent === parent)
-        return <select key={fl.id} aria-label={fl.label} value={cur} onChange={(e) => pick(fl, e.target.value)}>
-          <option value="">{parent ? `All ${fl.label.toLowerCase()}${/s$/i.test(fl.label) ? '' : 's'} in ${parent}` : fl.label}</option>
-          {opts.map((x) => { const n = (facets.opt[fl.id] || {})[x.v] || 0; return <option key={x.v} value={x.v} disabled={!n && x.v !== cur}>{optLabel(x)} ({n})</option> })}</select> })}</div>
+      <div className="searchbox"><span className="mag" aria-hidden="true">🔍</span>
+        <input className="big" type="search" aria-label="Search job offers" placeholder="Search jobs, companies, areas…" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
+        {f.q && <button className="clr" onClick={() => setF({ ...f, q: '' })} aria-label="Clear search">✕</button>}</div></section>
+    <section className="fpanel" aria-label="Filters">
+      <div className="fhead"><b>Filters</b>{active.length > 0 && <span className="fbadge">{active.length}</span>}<span className="grow" />
+        {dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear all</button>}
+        <button className="btn sm ftoggle" aria-expanded={fOpen} onClick={() => setFOpen(!fOpen)}>{fOpen ? 'Hide filters' : 'Show filters'}</button></div>
+      <div className={'filters' + (fOpen ? ' open' : '')}>
+        {shownFilters.map((fl) => { const cur = f.sel[fl.id] || '', parent = fl.dependsOn && f.sel[fl.dependsOn]
+          const opts = fl.options.filter((x) => !fl.dependsOn || !parent || x.parent === parent)
+          return <select key={fl.id} aria-label={fl.label} className={cur ? 'set' : ''} value={cur} onChange={(e) => pick(fl, e.target.value)}>
+            <option value="">{parent ? `All ${fl.label.toLowerCase()}${/s$/i.test(fl.label) ? '' : 's'} in ${parent}` : fl.label}</option>
+            {opts.map((x) => { const n = (facets.opt[fl.id] || {})[x.v] || 0; return <option key={x.v} value={x.v} disabled={!n && x.v !== cur}>{optLabel(x)} ({n})</option> })}</select> })}</div>
+      {active.length > 0 && <div className="applied">{active.map((fl) => { const x = fl.options.find((o) => o.v === f.sel[fl.id])
+        return <button key={fl.id} className="achip" onClick={() => pick(fl, '')} title="Remove this filter">{fl.label}: <b>{x ? optLabel(x) : f.sel[fl.id]}</b> ✕</button> })}</div>}
+    </section>
     {lvlSel && <p className="hint">Showing offers that need level <b>{lvlSel}</b> or lower{f.sel[langId] ? ' in ' + f.sel[langId] : ''}. Offers that don't state a level are included.</p>}
-    <div className="row bar" ref={barRef}><span className="muted">{loading ? 'Loading…' : list.length > PER_PAGE ? `Showing ${(cur - 1) * PER_PAGE + 1}–${Math.min(cur * PER_PAGE, list.length)} of ${list.length} offers` : `${list.length} offers found`}</span>
-      <span className="grow" />{dirty && <button className="link" onClick={() => setF(EMPTY)}>Clear filters</button>}
-      <select className="sortsel" aria-label="Sort offers" value={f.sort} onChange={setSort}>{SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+    <div className="row bar" ref={barRef}>
+      <div className="seg"><button className={!f.saved ? 'on' : ''} onClick={() => setF({ ...f, saved: false })}>All <small>{offers.length}</small></button>
+        <button className={f.saved ? 'on heart' : 'heart'} onClick={() => setF({ ...f, saved: true })}>♥ Saved <small>{offers.filter((o) => saved.includes(o.id)).length}</small></button></div>
+      <span className="muted" aria-live="polite">{loading ? 'Loading…' : list.length > PER_PAGE ? `Showing ${(cur - 1) * PER_PAGE + 1}–${Math.min(cur * PER_PAGE, list.length)} of ${list.length} offers` : `${list.length} offer${list.length === 1 ? '' : 's'} found`}</span>
+      <span className="grow" />
+      <select className="sortsel" aria-label="Sort offers" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })}>{SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
     <div className="grid">{shown.map((o) => <Card key={o.id} o={o} tax={tax} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
     {pages > 1 && <nav className="pager" aria-label="Pages">
       <button className="pg" disabled={cur === 1} onClick={() => go(cur - 1)}>‹ Prev</button>
@@ -92,7 +99,7 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
         : <button key={p} className={p === cur ? 'pg on' : 'pg'} aria-current={p === cur ? 'page' : undefined} onClick={() => go(p)}>{p}</button>)}
       <button className="pg" disabled={cur === pages} onClick={() => go(cur + 1)}>Next ›</button>
       <span className="pinfo">Page {cur} of {pages}</span></nav>}
-    {!loading && !list.length && <p className="empty">{f.saved && !saved.length ? 'You have not saved any offers yet. Tap the ♡ on any offer to keep it here.' : 'No offers match these filters. Try clearing some filters.'}</p>}
+    {!loading && !list.length && <div className="empty">{f.saved && !saved.length ? 'You have not saved any offers yet. Tap the ♡ on any offer to keep it here.' : 'No offers match your search and filters.'}{dirty && <><br /><button className="btn sm" style={{ marginTop: 10 }} onClick={() => setF(EMPTY)}>Clear search & filters</button></>}</div>}
   </>)
 }
 
