@@ -140,14 +140,19 @@ export function detectCategory(o, tax) {
   if (own) return own
   const r = RULES.find(([n, re]) => has(n) && re.test(pos)); return r ? canon(tax, r[0]) : canon(tax, 'Other')
 }
-export const categoryOf = (o, tax) => memo(o, tax, 'cat', () => (o.category && String(o.category).trim() ? canon(tax, o.category) : detectCategory(o, tax)))
-export const isAutoCategory = (o) => !(o.category && String(o.category).trim())
-export const allCategories = (offers, tax) => { const l = [...tax.categories]; offers.forEach((o) => { const c = categoryOf(o, tax); if (!l.includes(c)) l.push(c) }); return l }
+// An offer can have several categories: o.categories = ['Sales & Telesales', 'Graphic Designer'] (older offers may have a single o.category text)
+export const explicitCats = (o) => (Array.isArray(o.categories) ? o.categories : o.category ? [o.category] : []).map((c) => String(c).trim()).filter(Boolean)
+export const categoriesOf = (o, tax) => memo(o, tax, 'cats', () => { const ex = explicitCats(o)
+  if (!ex.length) return [detectCategory(o, tax)]
+  const out = []; ex.forEach((c) => { const k = canon(tax, c); if (!out.includes(k)) out.push(k) }); return out })
+export const isAutoCategory = (o) => !explicitCats(o).length
+export const withCats = (o, cats) => { const n = { ...o, categories: [...new Set(cats)] }; delete n.category; return n }
+export const allCategories = (offers, tax) => { const l = [...tax.categories]; offers.forEach((o) => categoriesOf(o, tax).forEach((c) => { if (!l.includes(c)) l.push(c) })); return l }
 
 // ---------- search ----------
-const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category'])
+const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category', 'categories'])
 const squash = (s) => norm(s).replace(/(\d),(?=\d)/g, '$1')
-const blob = (o, tax) => memo(o, tax, 'blob', () => squash([...Object.entries(o).filter(([k]) => !SKIP.has(k)).map(([, v]) => v), categoryOf(o, tax), ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')))
+const blob = (o, tax) => memo(o, tax, 'blob', () => squash([...Object.entries(o).filter(([k]) => !SKIP.has(k)).map(([, v]) => v), ...categoriesOf(o, tax), ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')))
 const tokens = (q) => squash(q).split(/[\s,;،]+/).filter(Boolean)
 
 // ---------- matching ----------
@@ -160,7 +165,7 @@ export function filterOk(o, fl, v, sel, tax) {
 // f = { q, cat, sel: { filterId: value }, saved }, ctx = { saved: [ids] }
 export function matches(o, f, tax, ctx) {
   if (f.saved && !(ctx.saved || []).includes(o.id)) return false
-  if (f.cat && categoryOf(o, tax) !== f.cat) return false
+  if (f.cat && !categoriesOf(o, tax).includes(f.cat)) return false
   for (const fl of tax.filters) if (!filterOk(o, fl, f.sel[fl.id], f.sel, tax)) return false
   if (f.q) { const b = blob(o, tax); if (!tokens(f.q).every((t) => b.includes(t))) return false }
   return true
@@ -169,7 +174,7 @@ export function matches(o, f, tax, ctx) {
 export function facetCounts(offers, f, tax, ctx) {
   const cat = {}, opt = {}
   const noCat = offers.filter((o) => matches(o, { ...f, cat: '' }, tax, ctx))
-  noCat.forEach((o) => { const c = categoryOf(o, tax); cat[c] = (cat[c] || 0) + 1 })
+  noCat.forEach((o) => categoriesOf(o, tax).forEach((c) => { cat[c] = (cat[c] || 0) + 1 }))
   tax.filters.forEach((fl) => {
     const base = offers.filter((o) => matches(o, { ...f, sel: { ...f.sel, [fl.id]: '' } }, tax, ctx)), m = {}
     fl.options.forEach((x) => { const sel = { ...f.sel, [fl.id]: x.v }; m[x.v] = base.filter((o) => filterOk(o, fl, x.v, sel, tax)).length })

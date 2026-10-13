@@ -100,3 +100,4 @@ fieldset{border:0;border-top:1px solid var(--b);padding:12px 0 0;margin:12px 0 0
 .tchip{border:1px solid var(--b);background:#fff;border-radius:99px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--tx)}.tchip.on{background:var(--t);border-color:var(--t);color:#fff}
 .tadd{display:inline-flex;gap:4px}.tadd input{width:130px;padding:4px 10px;font-size:13px;border-radius:99px}
 .link.small{font-size:12px}
+.catpills{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}

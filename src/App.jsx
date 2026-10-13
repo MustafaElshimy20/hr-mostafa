@@ -3,7 +3,7 @@ import { FIELDS } from './fields'
 import Admin from './Admin'
 import * as api from './api'
 import { SORTS, sortOffers, salaryLabel, gradsOnly } from './lib'
-import { normTax, valuesOf, filterById, matches, facetCounts, allCategories, categoryOf, levelRank, optLabel } from './taxonomy'
+import { normTax, valuesOf, filterById, matches, facetCounts, allCategories, categoriesOf, levelRank, optLabel } from './taxonomy'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
@@ -57,7 +57,7 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
   const setSort = (e) => setF({ ...f, sort: e.target.value })
   const pick = (fl, v) => { const sel = { ...f.sel, [fl.id]: v }; tax.filters.forEach((c) => { if (c.dependsOn === fl.id) delete sel[c.id] }); setF({ ...f, sel }) } // changing a parent (e.g. governorate) resets its children (area)
   const facets = useMemo(() => facetCounts(offers, f, tax, ctx), [offers, f, tax, ctx])
-  const cats = useMemo(() => allCategories(offers, tax).filter((c) => offers.some((o) => categoryOf(o, tax) === c)), [offers, tax]) // a category with no open offers is hidden
+  const cats = useMemo(() => allCategories(offers, tax).filter((c) => offers.some((o) => categoriesOf(o, tax).includes(c))), [offers, tax]) // a category with no open offers is hidden
   const langId = (tax.filters.find((x) => x.kind === 'level') || {}).langFilter
   const list = useMemo(() => {
     const lang = f.sel[langId]

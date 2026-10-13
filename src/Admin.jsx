@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS, SECTIONS, HINTS, SETTINGS } from './fields'
 import * as api from './api'
 import { companyKey, low, detectSalaryType, salaryTypeOf, SALARY_TYPES } from './lib'
-import { categoryOf, isAutoCategory, optLabel, valuesOf, filterById, norm } from './taxonomy'
+import { categoriesOf, explicitCats, isAutoCategory, filterById, norm } from './taxonomy'
 import { CategoriesTab, FiltersTab, TagEditor, Classify } from './Taxonomy'
 
 const field = (k) => FIELDS.find((x) => x[0] === k)
@@ -36,7 +36,7 @@ export default function Admin({ offers, settings, tax, session, reload }) {
 
 function OffersTab({ offers, tax, run, setEdit }) {
   const [q, setQ] = useState(''), [st, setSt] = useState(''), [sel, setSel] = useState([]), [cf, setCf] = useState(''), [cls, setCls] = useState(false)
-  const list = useMemo(() => offers.filter((o) => (!st || (o.status === 'Closed' ? 'Closed' : 'Open') === st) && (!cf || categoryOf(o, tax) === cf) && (!q || low([...Object.entries(o).filter(([k]) => k !== 'tags').map(([, v]) => v), categoryOf(o, tax)].join(' ')).includes(low(q)))), [offers, tax, q, st, cf])
+  const list = useMemo(() => offers.filter((o) => (!st || (o.status === 'Closed' ? 'Closed' : 'Open') === st) && (!cf || categoriesOf(o, tax).includes(cf)) && (!q || low([...Object.entries(o).filter(([k]) => k !== 'tags').map(([, v]) => v), ...categoriesOf(o, tax)].join(' ')).includes(low(q)))), [offers, tax, q, st, cf])
   const groups = useMemo(() => { const g = []; list.forEach((o) => { const k = companyKey(o.company), last = g[g.length - 1]; last && last.k === k ? last.items.push(o) : g.push({ k, name: o.company, items: [o] }) }); return g }, [list])
   const chosen = offers.filter((o) => sel.includes(o.id)), allOn = list.length > 0 && list.every((o) => sel.includes(o.id))
   const toggle = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
@@ -48,7 +48,7 @@ function OffersTab({ offers, tax, run, setEdit }) {
     <div className="tools">
       <input placeholder="🔍 Search offers…" value={q} onChange={(e) => setQ(e.target.value)} />
       <select value={st} onChange={(e) => setSt(e.target.value)}><option value="">All statuses</option><option>Open</option><option>Closed</option></select>
-      <select value={cf} onChange={(e) => setCf(e.target.value)} aria-label="Filter by category"><option value="">All categories</option>{[...new Set(offers.map((o) => categoryOf(o, tax)).concat(tax.categories))].map((c) => <option key={c}>{c}</option>)}</select>
+      <select value={cf} onChange={(e) => setCf(e.target.value)} aria-label="Filter by category"><option value="">All categories</option>{[...new Set(offers.flatMap((o) => categoriesOf(o, tax)).concat(tax.categories))].map((c) => <option key={c}>{c}</option>)}</select>
       <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site' })}>+ New offer</button></div>
     <div className="selbar">
       <label className="chk"><input type="checkbox" checked={allOn} onChange={() => setSel(allOn ? [] : list.map((o) => o.id))} /> {chosen.length ? `${chosen.length} selected` : `Select all (${list.length})`}</label>
@@ -67,7 +67,7 @@ function OffersTab({ offers, tax, run, setEdit }) {
       {g.items.map((o) => <div className={'arow' + (o.status === 'Closed' ? ' closed' : '')} key={o.id}>
         <input type="checkbox" aria-label="Select" checked={sel.includes(o.id)} onChange={() => toggle(o.id)} />
         <button className="ainfo" onClick={() => setEdit(o)}><b>{o.position}{salaryTypeOf(o) && <>{' '}<span className={'stype ' + salaryTypeOf(o).toLowerCase()}>{salaryTypeOf(o)}</span></>}</b><small>{[o.location, o.salary].filter(Boolean).join(' · ').slice(0, 90)}</small></button>
-        <span className={'catpill' + (isAutoCategory(o) ? ' auto' : '')} title={isAutoCategory(o) ? 'Guessed from the job title. Open the offer to choose one.' : 'Category'}>{categoryOf(o, tax)}</span>
+        <span className="catpills" title={isAutoCategory(o) ? 'Guessed from the job title. Open the offer to choose.' : 'Categories'}>{categoriesOf(o, tax).map((c) => <span key={c} className={'catpill' + (isAutoCategory(o) ? ' auto' : '')}>{c}</span>)}</span>
         <button className={'pill ' + (o.status === 'Closed' ? 'off' : 'on')} onClick={() => flip(o)} title="Click to switch">{o.status === 'Closed' ? 'Closed' : 'Open'}</button>
         <div className="row acts2"><button className="btn sm" onClick={() => setEdit(o)}>Edit</button><button className="btn sm" onClick={() => dup(o)} title="Create a copy (same company)">Duplicate</button><button className="btn sm del" onClick={() => del(o)}>Delete</button></div>
       </div>)}
@@ -79,7 +79,7 @@ function OffersTab({ offers, tax, run, setEdit }) {
 
 function OfferForm({ o, offers, tax, run, onClose }) {
   const [tx, setTx] = useState(tax)
-  const [v, setV] = useState(() => ({ ...o, salary_type: o.salary_type || detectSalaryType(o) || 'Not specified' })), [err, setErr] = useState('')
+  const [v, setV] = useState(() => ({ ...o, ...(explicitCats(o).length ? { categories: explicitCats(o) } : {}), salary_type: o.salary_type || detectSalaryType(o) || 'Not specified' })), [err, setErr] = useState('')
   const [typeChosen, setTypeChosen] = useState(!!o.salary_type) // once the admin picks Net/Gross, typing in the salary box no longer changes it
   useEffect(() => { const h = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', h); return () => removeEventListener('keydown', h) }, [])
   const set = (k) => (e) => { const val = e.target.value
@@ -91,9 +91,9 @@ function OfferForm({ o, offers, tax, run, onClose }) {
     if (c.link && !/^https?:\/\//i.test(c.link)) return setErr('Form link must start with http:// or https://')
     const same = offers.find((x) => x.id !== c.id && companyKey(x.company) === companyKey(c.company) && low(x.position) === low(c.position) && low(x.location) === low(c.location))
     if (same && !confirm('An offer with the same company, position and location already exists. Save anyway?')) return
-    // a category typed here that is new becomes a real category (same spelling rules: "graphic designer" = "Graphic Designer")
-    let t = tx
-    if (c.category) { const have = t.categories.find((x) => norm(x) === norm(c.category)); if (have) c.category = have; else { const i = t.categories.findIndex((x) => norm(x) === 'other'), cats = [...t.categories]; cats.splice(i < 0 ? cats.length : i, 0, c.category); t = { ...t, categories: cats } } } else delete c.category
+    // categories picked / typed in the form are already part of the draft taxonomy `tx`
+    const t = tx, cats = explicitCats(c).map((x) => t.categories.find((y) => norm(y) === norm(x)) || x)
+    delete c.category; if (cats.length) c.categories = [...new Set(cats)]; else delete c.categories
     run(async () => { if (JSON.stringify(t) !== JSON.stringify(tax)) await api.saveTaxonomy(t); await api.saveOffer(c); onClose() }, 'Offer saved ✔')
   }
   return (<div className="modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -115,7 +115,7 @@ function SettingsTab({ offers, settings, tax, run, say }) {
   const [s, setS] = useState(settings), [pw, setPw] = useState(''), file = useRef()
   useEffect(() => setS(settings), [settings])
   const exportJson = () => download(`offers-backup-${stamp()}.json`, JSON.stringify(offers.map(({ id, ...d }) => d), null, 1), 'application/json')
-  const exportCsv = () => { const keys = FIELDS.map((f) => f[0]); download(`offers-${stamp()}.csv`, '﻿' + [[...FIELDS.map((f) => csvCell(f[1])), csvCell('Category')].join(','), ...offers.map((o) => [...keys.map((k) => csvCell(o[k])), csvCell(categoryOf(o, tax))].join(','))].join('\n'), 'text/csv') }
+  const exportCsv = () => { const keys = FIELDS.map((f) => f[0]); download(`offers-${stamp()}.csv`, '﻿' + [[...FIELDS.map((f) => csvCell(f[1])), csvCell('Category')].join(','), ...offers.map((o) => [...keys.map((k) => csvCell(o[k])), csvCell(categoriesOf(o, tax).join(' / '))].join(','))].join('\n'), 'text/csv') }
   const importJson = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return
     try { const d = JSON.parse(await f.text()); if (!Array.isArray(d) || !d.every((x) => x && x.company && x.position)) throw new Error('bad file')
