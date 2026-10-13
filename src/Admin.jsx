@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { FIELDS, SECTIONS, HINTS, SETTINGS } from './fields'
 import * as api from './api'
 import { companyKey, low, detectSalaryType, salaryTypeOf, SALARY_TYPES } from './lib'
+import { categoryOf, isAutoCategory, optLabel, valuesOf, filterById, norm } from './taxonomy'
+import { CategoriesTab, FiltersTab, TagEditor, Classify } from './Taxonomy'
 
 const field = (k) => FIELDS.find((x) => x[0] === k)
 const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
 const download = (name, text, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000) }
 const stamp = () => new Date().toISOString().slice(0, 10)
 
-export default function Admin({ offers, settings, session, reload }) {
+export default function Admin({ offers, settings, tax, session, reload }) {
   const [tab, setTab] = useState('offers'), [edit, setEdit] = useState(null), [msg, setMsg] = useState(null), timer = useRef()
   const say = (text, bad) => { setMsg({ text, bad }); clearTimeout(timer.current); timer.current = setTimeout(() => setMsg(null), 3200) }
   const run = async (fn, ok) => { try { await fn(); await reload(); say(ok) } catch (e) { say('Error: ' + (e.message || e), true) } }
@@ -23,16 +25,18 @@ export default function Admin({ offers, settings, session, reload }) {
     <div className="stats">{stats.map(([l, n]) => <div key={l} className="stat"><b>{n}</b><span>{l}</span></div>)}</div>
     <div className="atabs">
       <button className={tab === 'offers' ? 'on' : ''} onClick={() => setTab('offers')}>Offers</button>
+      <button className={tab === 'categories' ? 'on' : ''} onClick={() => setTab('categories')}>Categories</button>
+      <button className={tab === 'filters' ? 'on' : ''} onClick={() => setTab('filters')}>Filters</button>
       <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>Site settings & backup</button></div>
-    {tab === 'offers' ? <OffersTab {...{ offers, run, setEdit }} /> : <SettingsTab {...{ offers, settings, run, say }} />}
-    {edit && <OfferForm o={edit} offers={offers} run={run} onClose={() => setEdit(null)} />}
+    {tab === 'offers' ? <OffersTab {...{ offers, tax, run, setEdit }} /> : tab === 'categories' ? <CategoriesTab {...{ offers, tax, run, say }} /> : tab === 'filters' ? <FiltersTab {...{ offers, tax, run, say }} /> : <SettingsTab {...{ offers, settings, tax, run, say }} />}
+    {edit && <OfferForm o={edit} offers={offers} tax={tax} run={run} onClose={() => setEdit(null)} />}
     {msg && <div className={'toast' + (msg.bad ? ' bad' : '')} role="status">{msg.text}</div>}
   </div>)
 }
 
-function OffersTab({ offers, run, setEdit }) {
-  const [q, setQ] = useState(''), [st, setSt] = useState(''), [sel, setSel] = useState([])
-  const list = useMemo(() => offers.filter((o) => (!st || (o.status === 'Closed' ? 'Closed' : 'Open') === st) && (!q || low(Object.values(o).join(' ')).includes(low(q)))), [offers, q, st])
+function OffersTab({ offers, tax, run, setEdit }) {
+  const [q, setQ] = useState(''), [st, setSt] = useState(''), [sel, setSel] = useState([]), [cf, setCf] = useState(''), [cls, setCls] = useState(false)
+  const list = useMemo(() => offers.filter((o) => (!st || (o.status === 'Closed' ? 'Closed' : 'Open') === st) && (!cf || categoryOf(o, tax) === cf) && (!q || low([...Object.entries(o).filter(([k]) => k !== 'tags').map(([, v]) => v), categoryOf(o, tax)].join(' ')).includes(low(q)))), [offers, tax, q, st, cf])
   const groups = useMemo(() => { const g = []; list.forEach((o) => { const k = companyKey(o.company), last = g[g.length - 1]; last && last.k === k ? last.items.push(o) : g.push({ k, name: o.company, items: [o] }) }); return g }, [list])
   const chosen = offers.filter((o) => sel.includes(o.id)), allOn = list.length > 0 && list.every((o) => sel.includes(o.id))
   const toggle = (id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
@@ -44,10 +48,12 @@ function OffersTab({ offers, run, setEdit }) {
     <div className="tools">
       <input placeholder="🔍 Search offers…" value={q} onChange={(e) => setQ(e.target.value)} />
       <select value={st} onChange={(e) => setSt(e.target.value)}><option value="">All statuses</option><option>Open</option><option>Closed</option></select>
+      <select value={cf} onChange={(e) => setCf(e.target.value)} aria-label="Filter by category"><option value="">All categories</option>{[...new Set(offers.map((o) => categoryOf(o, tax)).concat(tax.categories))].map((c) => <option key={c}>{c}</option>)}</select>
       <button className="btn pri" onClick={() => setEdit({ status: 'Open', work_mode: 'On-site' })}>+ New offer</button></div>
     <div className="selbar">
       <label className="chk"><input type="checkbox" checked={allOn} onChange={() => setSel(allOn ? [] : list.map((o) => o.id))} /> {chosen.length ? `${chosen.length} selected` : `Select all (${list.length})`}</label>
       {chosen.length > 0 && <div className="row">
+        <button className="btn sm pri" onClick={() => setCls(true)}>Classify…</button>
         <button className="btn sm" onClick={() => bulk(() => api.saveMany(chosen.map((o) => ({ ...o, status: 'Open' }))), 'Reopened ✔')}>Reopen</button>
         <button className="btn sm" onClick={() => bulk(() => api.saveMany(chosen.map((o) => ({ ...o, status: 'Closed' }))), 'Closed ✔')}>Close</button>
         <select className="btn sm" aria-label="Set salary type" value="" onChange={(e) => { const t = e.target.value; if (t) bulk(() => api.saveMany(chosen.map((o) => ({ ...o, salary_type: t }))), `Salary type set to ${t} ✔`) }}>
@@ -61,15 +67,18 @@ function OffersTab({ offers, run, setEdit }) {
       {g.items.map((o) => <div className={'arow' + (o.status === 'Closed' ? ' closed' : '')} key={o.id}>
         <input type="checkbox" aria-label="Select" checked={sel.includes(o.id)} onChange={() => toggle(o.id)} />
         <button className="ainfo" onClick={() => setEdit(o)}><b>{o.position}{salaryTypeOf(o) && <>{' '}<span className={'stype ' + salaryTypeOf(o).toLowerCase()}>{salaryTypeOf(o)}</span></>}</b><small>{[o.location, o.salary].filter(Boolean).join(' · ').slice(0, 90)}</small></button>
+        <span className={'catpill' + (isAutoCategory(o) ? ' auto' : '')} title={isAutoCategory(o) ? 'Guessed from the job title. Open the offer to choose one.' : 'Category'}>{categoryOf(o, tax)}</span>
         <button className={'pill ' + (o.status === 'Closed' ? 'off' : 'on')} onClick={() => flip(o)} title="Click to switch">{o.status === 'Closed' ? 'Closed' : 'Open'}</button>
         <div className="row acts2"><button className="btn sm" onClick={() => setEdit(o)}>Edit</button><button className="btn sm" onClick={() => dup(o)} title="Create a copy (same company)">Duplicate</button><button className="btn sm del" onClick={() => del(o)}>Delete</button></div>
       </div>)}
     </section>)}
+    {cls && <Classify chosen={chosen} tax={tax} run={(fn, ok) => run(fn, ok).then(() => setSel([]))} onClose={() => setCls(false)} />}
     {!list.length && <p className="empty">{offers.length ? 'No offers match your search.' : 'No offers yet. Click “+ New offer”.'}{!api.demo && !offers.length && <> <button className="btn sm" onClick={() => run(api.importStarter, 'Starter offers loaded ✔')}>Load starter offers</button></>}</p>}
   </>)
 }
 
-function OfferForm({ o, offers, run, onClose }) {
+function OfferForm({ o, offers, tax, run, onClose }) {
+  const [tx, setTx] = useState(tax)
   const [v, setV] = useState(() => ({ ...o, salary_type: o.salary_type || detectSalaryType(o) || 'Not specified' })), [err, setErr] = useState('')
   const [typeChosen, setTypeChosen] = useState(!!o.salary_type) // once the admin picks Net/Gross, typing in the salary box no longer changes it
   useEffect(() => { const h = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', h); return () => removeEventListener('keydown', h) }, [])
@@ -82,27 +91,31 @@ function OfferForm({ o, offers, run, onClose }) {
     if (c.link && !/^https?:\/\//i.test(c.link)) return setErr('Form link must start with http:// or https://')
     const same = offers.find((x) => x.id !== c.id && companyKey(x.company) === companyKey(c.company) && low(x.position) === low(c.position) && low(x.location) === low(c.location))
     if (same && !confirm('An offer with the same company, position and location already exists. Save anyway?')) return
-    run(() => api.saveOffer(c).then(onClose), 'Offer saved ✔')
+    // a category typed here that is new becomes a real category (same spelling rules: "graphic designer" = "Graphic Designer")
+    let t = tx
+    if (c.category) { const have = t.categories.find((x) => norm(x) === norm(c.category)); if (have) c.category = have; else { const i = t.categories.findIndex((x) => norm(x) === 'other'), cats = [...t.categories]; cats.splice(i < 0 ? cats.length : i, 0, c.category); t = { ...t, categories: cats } } } else delete c.category
+    run(async () => { if (JSON.stringify(t) !== JSON.stringify(tax)) await api.saveTaxonomy(t); await api.saveOffer(c); onClose() }, 'Offer saved ✔')
   }
   return (<div className="modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
     <div className="panel" role="dialog" aria-modal="true">
       <div className="ph"><h3>{o.id ? 'Edit offer' : 'New offer'}</h3><button className="x" onClick={onClose} aria-label="Close">✕</button></div>
       <div className="pb">
         {SECTIONS.map(([title, keys]) => <fieldset key={title}><legend>{title}</legend>
-          <div className="fgrid">{keys.map((k) => { const [, label, long, opts] = field(k)
+          <div className="fgrid">{keys.map((k) => { const [, label, long, fopts] = field(k), opts = k === 'work_mode' ? ((filterById(tx, 'work') || { options: [] }).options.map((x) => x.v).concat(v.work_mode && !(filterById(tx, 'work').options.some((x) => x.v === v.work_mode)) ? [v.work_mode] : [])) : fopts
             return <label key={k} className={long ? 'full' : ''}>{label}
               {opts ? <select value={v[k] || opts[0]} onChange={set(k)}>{opts.map((x) => <option key={x}>{x}</option>)}</select>
                 : long ? <textarea value={v[k] || ''} onChange={set(k)} placeholder={HINTS[k] || ''} /> : <input value={v[k] || ''} onChange={set(k)} placeholder={HINTS[k] || ''} />}</label> })}</div></fieldset>)}
+        <TagEditor v={v} setV={setV} tx={tx} setTx={setTx} />
       </div>
       <div className="pf">{err && <span className="err">{err}</span>}<span className="grow" /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" onClick={save}>Save offer</button></div>
     </div></div>)
 }
 
-function SettingsTab({ offers, settings, run, say }) {
+function SettingsTab({ offers, settings, tax, run, say }) {
   const [s, setS] = useState(settings), [pw, setPw] = useState(''), file = useRef()
   useEffect(() => setS(settings), [settings])
   const exportJson = () => download(`offers-backup-${stamp()}.json`, JSON.stringify(offers.map(({ id, ...d }) => d), null, 1), 'application/json')
-  const exportCsv = () => { const keys = FIELDS.map((f) => f[0]); download(`offers-${stamp()}.csv`, '﻿' + [FIELDS.map((f) => csvCell(f[1])).join(','), ...offers.map((o) => keys.map((k) => csvCell(o[k])).join(','))].join('\n'), 'text/csv') }
+  const exportCsv = () => { const keys = FIELDS.map((f) => f[0]); download(`offers-${stamp()}.csv`, '﻿' + [[...FIELDS.map((f) => csvCell(f[1])), csvCell('Category')].join(','), ...offers.map((o) => [...keys.map((k) => csvCell(o[k])), csvCell(categoryOf(o, tax))].join(','))].join('\n'), 'text/csv') }
   const importJson = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return
     try { const d = JSON.parse(await f.text()); if (!Array.isArray(d) || !d.every((x) => x && x.company && x.position)) throw new Error('bad file')

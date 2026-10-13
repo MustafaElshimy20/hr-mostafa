@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import seed from './offers.json'
 import { groupByCompany } from './lib'
+import { normTax } from './taxonomy'
 const env = import.meta.env
 const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const sb = url && key ? createClient(url, key) : null
@@ -46,11 +47,24 @@ export async function importStarter() {
 export async function loadSettings() {
   if (demo) return { ...DEFAULTS, ...ls('hr_settings', {}) }
   const { data } = await sb.from('site_settings').select('key,value')
-  return { ...DEFAULTS, ...Object.fromEntries((data || []).map((r) => [r.key, r.value])) }
+  return { ...DEFAULTS, ...Object.fromEntries((data || []).filter((r) => r.key !== 'taxonomy').map((r) => [r.key, r.value])) }
 }
 export async function saveSettings(s) {
   if (demo) return localStorage.setItem('hr_settings', JSON.stringify(s))
   const { error } = await sb.from('site_settings').upsert(Object.entries(s).map(([key, value]) => ({ key, value }))); if (error) throw error
+}
+// categories + filters (stored as one JSON text under the key "taxonomy" in site_settings, so no database change is needed)
+export async function loadTaxonomy() {
+  if (demo) return normTax(ls('hr_taxonomy', null))
+  const { data, error } = await sb.from('site_settings').select('value').eq('key', 'taxonomy').maybeSingle()
+  if (error) throw error
+  return normTax(data && data.value)
+}
+export async function saveTaxonomy(t) {
+  const clean = normTax(t)
+  if (demo) { localStorage.setItem('hr_taxonomy', JSON.stringify(clean)); return clean }
+  const { error } = await sb.from('site_settings').upsert({ key: 'taxonomy', value: JSON.stringify(clean) }); if (error) throw error
+  return clean
 }
 export const auth = {
   session: async () => (demo ? null : (await sb.auth.getSession()).data.session),

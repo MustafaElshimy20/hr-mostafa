@@ -18,7 +18,9 @@
   "interview_time": "Sun-Thu, 11 AM-5 PM",
   "link": "https://forms.cloud.microsoft/r/Vzjk1iw0wj",
   "status": "Open",
-  "notes": "Another part of the source says 'up to 20k' - confirm."
+  "notes": "Another part of the source says 'up to 20k' - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Teleperformance",
@@ -39,7 +41,9 @@
   "interview_time": "Sun-Thu, 10 AM-5 PM",
   "link": "https://forms.cloud.microsoft/r/Vzjk1iw0wj",
   "status": "Open",
-  "notes": "Voice-only account."
+  "notes": "Voice-only account.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Teleperformance",
@@ -60,7 +64,9 @@
   "interview_time": "Sun-Thu, 10 AM-5 PM",
   "link": "https://forms.cloud.microsoft/r/Vzjk1iw0wj",
   "status": "Open",
-  "notes": "Start date 22 Oct. Both genders. Variable pay (EUR) converted at Central Bank rate."
+  "notes": "Start date 22 Oct. Both genders. Variable pay (EUR) converted at Central Bank rate.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Teleperformance",
@@ -81,7 +87,9 @@
   "interview_time": "Sun-Thu, 10 AM-5 PM",
   "link": "https://forms.cloud.microsoft/r/Vzjk1iw0wj",
   "status": "Open",
-  "notes": "Start date 22 Oct. Variable pay (EUR) at Central Bank rate. Apply via Mosla Pioneers."
+  "notes": "Start date 22 Oct. Variable pay (EUR) at Central Bank rate. Apply via Mosla Pioneers.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "LPM",
@@ -102,7 +110,9 @@
   "interview_time": "Mon, Tue & Wed, 7-9 PM",
   "link": "https://forms.cloud.microsoft/r/7S0HZufQZe",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "ACES",
@@ -123,7 +133,9 @@
   "interview_time": "",
   "link": "https://forms.cloud.microsoft/r/Ack06t7uqy",
   "status": "Open",
-  "notes": "Do NOT schedule interviews or send the location. Agency details needed: recruiter, team leader, unit manager, agency name. Girls door-to-door at night: Nasr City, Masr El Gedida, Zaytoun, Heliopolis, Gesr Suez, Sheraton, Nozha."
+  "notes": "Do NOT schedule interviews or send the location. Agency details needed: recruiter, team leader, unit manager, agency name. Girls door-to-door at night: Nasr City, Masr El Gedida, Zaytoun, Heliopolis, Gesr Suez, Sheraton, Nozha.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Vitrin Clinic",
@@ -144,7 +156,9 @@
   "interview_time": "Sun-Thu, 3-8 PM",
   "link": "https://forms.cloud.microsoft/r/XkCdZdjFgP",
   "status": "Open",
-  "notes": "12-month commitment preferred."
+  "notes": "12-month commitment preferred.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Winirix",
@@ -165,7 +179,9 @@
   "interview_time": "",
   "link": "https://forms.cloud.microsoft/r/miTaMtKcBp",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "CataLeads",
@@ -186,7 +202,9 @@
   "interview_time": "",
   "link": "https://forms.cloud.microsoft/r/mkgBNJ79MR",
   "status": "Open",
-  "notes": "Send with the voice note: previous company, title, account, period."
+  "notes": "Send with the voice note: previous company, title, account, period.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Contact Center Source",
@@ -207,7 +225,9 @@
   "interview_time": "Mon-Fri, anytime after 7 PM",
   "link": "https://forms.cloud.microsoft/r/gZ5c6Sh09M",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "ECLerx",
@@ -228,7 +248,9 @@
   "interview_time": "Sun-Thu, 1-5 PM",
   "link": "https://response.forms.app/samiahahmed/job-application-form",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "BIS",
@@ -249,7 +271,9 @@
   "interview_time": "Mon-Fri, 4:30-8:30 PM",
   "link": "https://forms.cloud.microsoft/r/WCmHychCgB",
   "status": "Open",
-  "notes": "Not suitable per source: students from far universities (Benha, Zagazig...), students with mandatory attendance after 2 PM, candidates from far areas (Madinaty, Shorouk, Obour, Badr, October)."
+  "notes": "Not suitable per source: students from far universities (Benha, Zagazig...), students with mandatory attendance after 2 PM, candidates from far areas (Madinaty, Shorouk, Obour, Badr, October).",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Transcom",
@@ -270,7 +294,9 @@
   "interview_time": "Mon-Fri, 12 PM-6:40 PM",
   "link": "https://forms.cloud.microsoft/r/eTSjeJjVTH",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Concentrix",
@@ -291,7 +317,9 @@
   "interview_time": "",
   "link": "https://forms.cloud.microsoft/r/z0z0HyBuM7",
   "status": "Open",
-  "notes": "Polish salary is listed in the source but no Polish account is named."
+  "notes": "Polish salary is listed in the source but no Polish account is named.",
+  "work_mode": "On-site",
+  "salary_type": "Gross"
  },
  {
   "company": "Concentrix",
@@ -312,14 +340,16 @@
   "interview_time": "",
   "link": "https://forms.cloud.microsoft/r/eTSjeJjVTH",
   "status": "Open",
-  "notes": "Same form link as Transcom in the source."
+  "notes": "Same form link as Transcom in the source.",
+  "work_mode": "On-site",
+  "salary_type": "Gross"
  },
  {
   "company": "Evolve Marketing LLC",
   "position": "Telesales / Telemarketer Agent - PAS Patient Assistance Survey (6-month contract)",
   "location": "Heliopolis",
   "nationality": "Egyptians only",
-  "salary": "Up to 20,000 (10,000 basic + KPIs [8,500 + 1,500] + commission 2,200-10,000 uncapped + daily spiffs, bonuses & team incentives)",
+  "salary": "10,000 net (basic 8,500 + KPIs 1,500) + commission 2,200-10,000 uncapped (package up to 20,000) + daily spiffs, bonuses & team incentives",
   "shifts": "4 PM-12 AM (8 hrs incl. 1-hr break); Mon-Fri; Sat & Sun off",
   "age": "18-30",
   "education": "Grads, undergrads, gap years, dropouts",
@@ -333,7 +363,9 @@
   "interview_time": "",
   "link": "https://forms.cloud.microsoft/r/2XZyf7Jhzc",
   "status": "Open",
-  "notes": "Called 'Telesales Agent' in the PDF and 'PAS' in the posted offer (same package). Cairo residents preferred. Female transport areas: Ramses, El Helmeya, El Zeitoun, around Heliopolis, El Matariya."
+  "notes": "Called 'Telesales Agent' in the PDF and 'PAS' in the posted offer (same package). Cairo residents preferred. Female transport areas: Ramses, El Helmeya, El Zeitoun, around Heliopolis, El Matariya.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "LeadBull",
@@ -354,7 +386,9 @@
   "interview_time": "Thu & Fri, 8-10 PM",
   "link": "https://forms.cloud.microsoft/r/4XJCYdT7uM",
   "status": "Open",
-  "notes": "Map: https://maps.app.goo.gl/SKZHRHsYNo5htKDF9 (Ashgar Darna Compound)."
+  "notes": "Map: https://maps.app.goo.gl/SKZHRHsYNo5htKDF9 (Ashgar Darna Compound).",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Telephonic",
@@ -375,14 +409,16 @@
   "interview_time": "Mon-Fri",
   "link": "https://forms.cloud.microsoft/r/UK4BLKThrp",
   "status": "Open",
-  "notes": "30 vacancies. On-site. The PDF version said: fixed 4 PM-1 AM, 1 year experience, Egyptians & foreigners, all education statuses - confirm which is current."
+  "notes": "30 vacancies. On-site. The PDF version said: fixed 4 PM-1 AM, 1 year experience, Egyptians & foreigners, all education statuses - confirm which is current.",
+  "work_mode": "On-site",
+  "salary_type": "Gross"
  },
  {
   "company": "LTS (Logical Technology Solutions)",
   "position": "Hotel Surveys - Outbound",
   "location": "El Nozha, Cairo",
   "nationality": "Egyptians only",
-  "salary": "12,000 base + 2,000 KPIs; after 3 months +12,000 bonus (salary becomes 15,000); up to 30 EGP per transfer",
+  "salary": "12,000 net base + 2,000 KPIs; after 3 months +12,000 bonus (salary becomes 15,000); up to 30 EGP per transfer",
   "shifts": "Rotational (night, overnight): shifts between 3 PM-2 AM; 5 days + 2 off",
   "age": "Max 35",
   "education": "Grads, undergrads, gap years, dropouts",
@@ -396,7 +432,9 @@
   "interview_time": "",
   "link": "https://response.forms.app/samiahahmed/job-application-form-1",
   "status": "Open",
-  "notes": "Outbound hotel-guest surveys; transfer calls to a USA call center (target 11/day). Female transport areas: Nasr City, Sheraton, Gesr Suez, Ain Shams, El Nozha, Matrya, Shubra Masr, Masr El Gdeda, Gardenia, Helmya El-Zaiton."
+  "notes": "Outbound hotel-guest surveys; transfer calls to a USA call center (target 11/day). Female transport areas: Nasr City, Sheraton, Gesr Suez, Ain Shams, El Nozha, Matrya, Shubra Masr, Masr El Gdeda, Gardenia, Helmya El-Zaiton.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "LTS (Logical Technology Solutions)",
@@ -417,7 +455,9 @@
   "interview_time": "",
   "link": "https://response.forms.app/samiahahmed/job-application-form-1",
   "status": "Open",
-  "notes": "Experience: posted offer says 1 year in customer service & sales, PDF said 6+ months sales - confirm. Female transport areas: Nasr City, Sheraton, Gesr Suez, Ain Shams, El Nozha, Matrya, Shubra Masr, Masr El Gdeda, Gardenia, Helmya El-Zaiton."
+  "notes": "Experience: posted offer says 1 year in customer service & sales, PDF said 6+ months sales - confirm. Female transport areas: Nasr City, Sheraton, Gesr Suez, Ain Shams, El Nozha, Matrya, Shubra Masr, Masr El Gdeda, Gardenia, Helmya El-Zaiton.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Atain",
@@ -438,7 +478,9 @@
   "interview_time": "Mon-Fri, 11 AM-4 PM",
   "link": "https://forms.cloud.microsoft/r/bkvF8njLSK",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Atain",
@@ -459,7 +501,9 @@
   "interview_time": "Mon-Fri, 11 AM-4 PM",
   "link": "https://forms.cloud.microsoft/r/bkvF8njLSK",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Atain",
@@ -480,14 +524,16 @@
   "interview_time": "Mon-Fri, 12-3 PM",
   "link": "https://forms.cloud.microsoft/r/bkvF8njLSK",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Atain (source says 'Alorica French')",
   "position": "French Travel Advisor - GDS Experience",
   "location": "Sheikh Zayed",
   "nationality": "Egyptians only",
-  "salary": "32,000 gross basic",
+  "salary": "32,000 basic",
   "shifts": "Rotational (morning, night, overnight); 5 days + 2 off; 8 hrs + 1 hr break",
   "age": "Max 35",
   "education": "Graduates & undergrads",
@@ -501,7 +547,10 @@
   "interview_time": "Mon-Fri, 11 AM-4 PM",
   "link": "https://forms.cloud.microsoft/r/bkvF8njLSK",
   "status": "Open",
-  "notes": "Source heading says 'Alorica French' but text says Atain - confirm."
+  "notes": "Source heading says 'Alorica French' but text says Atain - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified",
+  "internal": "Salary is written as Net in one part of the source and Gross in another - confirm, then set Salary Type."
  },
  {
   "company": "O4U",
@@ -522,7 +571,9 @@
   "interview_time": "Mon-Fri, 12:30-6 PM (avoid lunch 3:30-4:10 PM)",
   "link": "https://forms.cloud.microsoft/r/Xucdt4QyPU",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "O4U",
@@ -543,7 +594,9 @@
   "interview_time": "Mon-Fri, 12:30-6 PM",
   "link": "https://forms.cloud.microsoft/r/Xucdt4QyPU",
   "status": "Open",
-  "notes": "Only 5 positions remaining."
+  "notes": "Only 5 positions remaining.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "O4U",
@@ -564,7 +617,9 @@
   "interview_time": "Mon-Fri, 12:30-6 PM",
   "link": "https://forms.cloud.microsoft/r/Xucdt4QyPU",
   "status": "Open",
-  "notes": "Limited positions."
+  "notes": "Limited positions.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "O4U",
@@ -585,7 +640,9 @@
   "interview_time": "Mon-Fri, 12:30-6 PM",
   "link": "https://forms.cloud.microsoft/r/Xucdt4QyPU",
   "status": "Open",
-  "notes": "Female only. Payroll & attendance support; MS Office."
+  "notes": "Female only. Payroll & attendance support; MS Office.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Cxperts",
@@ -606,7 +663,9 @@
   "interview_time": "Mon-Fri, 1-7 PM",
   "link": "https://forms.cloud.microsoft/r/T1FrgP4C9X",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "TTC",
@@ -627,7 +686,9 @@
   "interview_time": "Mon-Fri, 3:30-5:30 PM",
   "link": "https://response.forms.app/samiahahmed/employment-application-form",
   "status": "Open",
-  "notes": "Address: 34 Makram Ebeid, 6th Floor. Source figures add up to 13,500 - confirm salary."
+  "notes": "Address: 34 Makram Ebeid, 6th Floor. Source figures add up to 13,500 - confirm salary.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Teleperformance",
@@ -648,7 +709,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Hiring 5 FTEs. Start date 25 October. Outbound Sales. Variable pay converted at Central Bank rate. Post says both 'Egyptians Only' and 'foreigners allowed' - confirm."
+  "notes": "Hiring 5 FTEs. Start date 25 October. Outbound Sales. Variable pay converted at Central Bank rate. Post says both 'Egyptians Only' and 'foreigners allowed' - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "TTEC",
@@ -669,7 +732,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Post says 'ready to start 24 Aug' - may be outdated. Pickup points: Rehab, New Cairo, Zahraa, Maadi, Selm Saqr Qorish, Heliopolis (Masr El Gedida), Mostashfa Heliopolis, Nasr City, Midan El Sa'a, Koshk El Ward, Go Bus - Nady El Sekka, 6th of October, Hadayek El Ahram, Midan Juhaina, El Fardous, Tariq El Wahat, Hosary - Haram, Faisal, Moneib, Helwan, El Maasara, Madkhal Total 2, Khalafawy, Central, Shoubra, Abdel Moneim Riad, Masr El Adema, El Obour, El Shorouk."
+  "notes": "Post says 'ready to start 24 Aug' - may be outdated. Pickup points: Rehab, New Cairo, Zahraa, Maadi, Selm Saqr Qorish, Heliopolis (Masr El Gedida), Mostashfa Heliopolis, Nasr City, Midan El Sa'a, Koshk El Ward, Go Bus - Nady El Sekka, 6th of October, Hadayek El Ahram, Midan Juhaina, El Fardous, Tariq El Wahat, Hosary - Haram, Faisal, Moneib, Helwan, El Maasara, Madkhal Total 2, Khalafawy, Central, Shoubra, Abdel Moneim Riad, Masr El Adema, El Obour, El Shorouk.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "TTEC",
@@ -690,7 +755,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Post says 'ready to start 7 Oct' - may be outdated. Duties: handle customer inquiries, give accurate info & solutions, ensure satisfaction."
+  "notes": "Post says 'ready to start 7 Oct' - may be outdated. Duties: handle customer inquiries, give accurate info & solutions, ensure satisfaction.",
+  "work_mode": "On-site",
+  "salary_type": "Gross"
  },
  {
   "company": "Alorica",
@@ -711,7 +778,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Cloud Calls Solutions (CCS)",
@@ -732,14 +801,16 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Listed package parts add up to 17,100 - confirm."
+  "notes": "Listed package parts add up to 17,100 - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Minister Fitness Pharma",
   "position": "Sales Agent (Females only)",
   "location": "New Cairo, 1st Settlement",
   "nationality": "Egyptians only",
-  "salary": "7,000-10,000 (by experience) + commission (discussed in interview) + monthly performance incentives",
+  "salary": "7,000-10,000 net (by experience) + commission (discussed in interview) + monthly performance incentives",
   "shifts": "Fixed 10 AM-6 PM; 6 days, Friday off",
   "age": "Max 35",
   "education": "Graduates",
@@ -753,7 +824,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Female only. Header says net 10,000 but body says 7,000-10,000 - confirm."
+  "notes": "Female only. Header says net 10,000 but body says 7,000-10,000 - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "PropMarts",
@@ -774,7 +847,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Header says up to 8,000, body says 8,000-10,000. 'Junior' title but 2 years experience required - confirm."
+  "notes": "Header says up to 8,000, body says 8,000-10,000. 'Junior' title but 2 years experience required - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "PropMarts",
@@ -795,7 +870,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Header says up to 10,000, body says 10,000-15,000 - confirm."
+  "notes": "Header says up to 10,000, body says 10,000-15,000 - confirm.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Sun Sky",
@@ -816,7 +893,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": ""
+  "notes": "",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Telephonic",
@@ -837,7 +916,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Female only."
+  "notes": "Female only.",
+  "work_mode": "On-site",
+  "salary_type": "Not specified"
  },
  {
   "company": "Telephonic",
@@ -858,7 +939,9 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Female only. Duties: payroll & monthly closing, personnel records, attendance/leaves/insurance, employee relations, offboarding, HR reporting."
+  "notes": "Female only. Duties: payroll & monthly closing, personnel records, attendance/leaves/insurance, employee relations, offboarding, HR reporting.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  },
  {
   "company": "Telephonic",
@@ -879,6 +962,8 @@
   "interview_time": "",
   "link": "",
   "status": "Open",
-  "notes": "Female only. Hiring ~15 agents/month + support functions. Duties: full recruitment cycle, sourcing, screening, offers, onboarding, 30-day follow-ups, hiring reports."
+  "notes": "Female only. Hiring ~15 agents/month + support functions. Duties: full recruitment cycle, sourcing, screening, offers, onboarding, 30-day follow-ups, hiring reports.",
+  "work_mode": "On-site",
+  "salary_type": "Net"
  }
 ]
