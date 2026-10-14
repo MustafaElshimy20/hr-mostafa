@@ -5,6 +5,7 @@ import * as api from './api'
 import { SORTS, sortOffers, salaryLabel, gradsOnly } from './lib'
 import { normTax, valuesOf, filterById, matches, facetCounts, levelRank, optLabel, relevance, tokens } from './taxonomy'
 import { shareMessage } from './share'
+import { tidy, toList, plainSalary } from './text'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
@@ -131,26 +132,68 @@ function Card({ o, q, tax, tpl, saved, onSave }) {
 
 // salary text with the Net / Gross word right after the figure, e.g. "12,000 Net + uncapped commission"
 
+const SHORT = 48 // a value longer than this is not a "key detail"; it is shown in full in its section instead
+function Row({ label, children }) { return <div className="drow"><dt>{label}</dt><dd>{children}</dd></div> }
+function Items({ text, check, arrows }) { const l = toList(text, { arrows, sentences: !check && !arrows })
+  if (arrows && l.length > 1) return <ol className="steps">{l.map((x, i) => <li key={i}>{x}</li>)}</ol>
+  return l.length > 1 || check ? <ul className={check ? 'ticks' : 'bul'}>{l.map((x, i) => <li key={i}>{x}</li>)}</ul> : <>{l[0]}</> }
+
 function Detail({ tax, tpl, o, n, loading, saved, toggleSave }) {
   const [copied, setCopied] = useState(false)
   if (!o) return <><a className="back" href="#">← All offers</a><p className="empty">{loading ? 'Loading…' : 'This offer is no longer available.'}</p></>
-  const Sec = ({ t, keys }) => { const rows = keys.map((k) => [k, FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? (valOf(o, tax, 'work').join(' / ') || o[k]) : o[k]]).filter((r) => r[2])
-    return rows.length ? <section className="card"><h3>{t}</h3><dl>{rows.map(([k, l, v]) => <div key={k}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null }
+  const sl = salaryLabel(o), pl = areasOf(o, tax), shift = valOf(o, tax, 'shift').join(' / '), work = valOf(o, tax, 'work').join(' / ')
+  const loc = tidy(o.location), lang = tidy(o.language), exp = tidy(o.experience)
+  const locShort = loc && loc.length <= SHORT, langShort = lang && lang.length <= SHORT, expShort = exp && exp.length <= SHORT
+  const hasSal = sl.text !== 'Salary on request'
+  const key = [ // the highlighted details (each one appears once: long texts are summarised here and written in full below)
+    ['💰', 'Salary', hasSal ? <>{sl.text}{sl.type && <>{' '}<span className={'stype in ' + sl.type.toLowerCase()}>{sl.type}</span></>}</> : 'On request', 'sal'],
+    loc && ['📍', 'Location', locShort ? loc : pl.length > 1 ? `${pl.length} locations` : pl[0] || 'See details below'],
+    lang && ['🗣️', 'Language', langShort ? lang : 'Multiple languages (see below)'],
+    exp && ['🧑‍💼', 'Experience', expShort ? exp : 'See requirements below'],
+  ].filter(Boolean)
   const msg = `Hello, I'd like to apply for: ${o.position} at ${o.company}${o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''}`
+  const apply = <a className="btn wa big block" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply via WhatsApp</a>
+  const Card = ({ icon, title, rows }) => { const r = rows.filter(Boolean); return r.length ? <section className="dcard"><h3><span className="ic" aria-hidden="true">{icon}</span>{title}</h3><dl>{r}</dl></section> : null }
   return (<>
     <a className="back" href="#">← All offers</a>
-    <div className="dhead"><span className="co">{o.company}</span><h1>{o.position}</h1>
-      <div className="tags"><span>📍 {o.location}</span>{o.language && <span>🗣️ {o.language}</span>}</div>
-      <a className="btn wa big" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply on WhatsApp</a>
-      <div className="row dacts">
-        <button className={saved.includes(o.id) ? 'btn on' : 'btn'} onClick={() => toggleSave(o.id)}>{saved.includes(o.id) ? '♥ Saved' : '♡ Save'}</button>
-        <a className="btn" href={shareHref(o, tax, tpl)} target="_blank" rel="noreferrer">↗ Share on WhatsApp</a>
-        <button className="btn" onClick={() => navigator.clipboard.writeText(offerLink(o)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }, () => {})}>{copied ? 'Copied ✔' : '🔗 Copy link'}</button>
-      </div></div>
-    <Sec t="Salary & benefits" keys={['salary', 'benefits', 'transport']} />
-    <Sec t="Schedule" keys={['shifts', 'work_mode', 'interview_type', 'interview_time']} />
-    <Sec t="Requirements" keys={['education', 'age', 'nationality', 'military', 'experience', 'language']} />
-    <Sec t="More info" keys={['steps', 'notes']} />
-    <div className="sticky"><a className="btn wa big" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply on WhatsApp</a></div>
+    <header className="dtitle"><span className="co">{o.company}</span><h1>{o.position}</h1>
+      {o.status === 'Closed' && <p className="closedmsg">This offer is currently closed.</p>}</header>
+    <div className="dlayout">
+      <main className="dmain">
+        <Card icon="💰" title="Salary & benefits" rows={[
+          o.salary && (!plainSalary(o.salary) || !hasSal) && <Row key="s" label="Pay details"><Items text={o.salary} /></Row>,
+          o.benefits && <Row key="b" label="Benefits"><Items text={o.benefits} check /></Row>,
+          o.transport && <Row key="t" label="Transportation"><Items text={o.transport} /></Row>]} />
+        <Card icon="🕐" title="Work & interview details" rows={[
+          loc && !locShort && <Row key="l" label="Location"><Items text={o.location} /></Row>,
+          o.shifts && <Row key="sh" label="Shifts"><Items text={o.shifts} /></Row>,
+          (work || o.work_mode) && <Row key="w" label="Work mode">{work || o.work_mode}</Row>,
+          o.interview_type && <Row key="it" label="Interview type"><Items text={o.interview_type} /></Row>,
+          o.interview_time && <Row key="iti" label="Interview time"><Items text={o.interview_time} /></Row>]} />
+        <Card icon="📋" title="Requirements" rows={[
+          o.education && <Row key="e" label="Education"><Items text={o.education} /></Row>,
+          o.age && <Row key="a" label="Age">{tidy(o.age)}</Row>,
+          o.nationality && <Row key="na" label="Nationality">{tidy(o.nationality)}</Row>,
+          o.military && <Row key="m" label="Military status">{tidy(o.military)}</Row>,
+          exp && !expShort && <Row key="x" label="Experience"><Items text={o.experience} /></Row>,
+          lang && !langShort && <Row key="lg" label="Language"><Items text={o.language} /></Row>]} />
+        <Card icon="📝" title="How to apply" rows={[
+          o.steps && <Row key="st" label="Steps"><Items text={o.steps} arrows /></Row>,
+          o.notes && <Row key="no" label="Good to know"><Items text={o.notes} /></Row>]} />
+      </main>
+      <aside className="dside">
+        <div className="keycard">
+          <h2>Key details</h2>
+          <ul>{key.map(([i, l, v, k]) => <li key={l} className={k}><span className="ki" aria-hidden="true">{i}</span><span><small>{l}</small><b>{v}</b></span></li>)}</ul>
+          {shift || work ? <div className="tags">{shift && <span>{/rotat/i.test(shift) ? '🔄' : '🕐'} {shift}</span>}{work && <span>{/home|remote|wfh/i.test(work) ? '🏠' : /hybrid/i.test(work) ? '🔀' : '🏢'} {work}</span>}{gradsOnly(o) && <span>🎓 Graduates</span>}</div> : null}
+          <div className="applybtn">{apply}</div>
+          <div className="row dacts">
+            <button className={saved.includes(o.id) ? 'btn sm on' : 'btn sm'} onClick={() => toggleSave(o.id)}>{saved.includes(o.id) ? '♥ Saved' : '♡ Save'}</button>
+            <a className="btn sm" href={shareHref(o, tax, tpl)} target="_blank" rel="noreferrer">↗ Share</a>
+            <button className="btn sm" onClick={() => navigator.clipboard.writeText(offerLink(o)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }, () => {})}>{copied ? 'Copied ✔' : '🔗 Copy link'}</button></div>
+        </div>
+      </aside>
+    </div>
+    <div className="sticky">{apply}</div>
   </>)
 }

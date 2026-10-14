@@ -6,7 +6,7 @@ const env = import.meta.env
 const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const sb = url && key ? createClient(url, key) : null
 export const demo = !sb
-export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the job offer that fits you. Search, filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '', share_template: '' }
+export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the right job for you. Search or filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '', share_template: '' }
 const ls = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
 const base = () => ls('hr_offers', seed.map((d, i) => ({ id: 's' + i, ...d })))
 const put = (a) => localStorage.setItem('hr_offers', JSON.stringify(a))
