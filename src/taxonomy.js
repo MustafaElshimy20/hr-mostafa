@@ -9,7 +9,7 @@
 //   2. automatically, by reading the offer's own text (filter.field) for the option keywords (whole words only).
 import { salaryFigure } from './lib'
 
-export const norm = (s) => String(s ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+export const norm = (s) => String(s ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
 export const optLabel = (x) => x.label || x.v
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const RE = new Map()
@@ -124,10 +124,39 @@ export function levelRank(o, tax, lang) { // -1 = no level stated
 export const levelOk = (o, tax, lang, level) => { if (!level) return true; const r = levelRank(o, tax, lang); return r < 0 || r <= LV.indexOf(level) }
 
 // ---------- search ----------
-const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category', 'categories'])  // (old category data is kept in the database but no longer used)
+const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category', 'categories', 'share_text'])  // (old category data is kept in the database but no longer used)
 const squash = (s) => norm(s).replace(/(\d),(?=\d)/g, '$1')
 const blob = (o, tax) => memo(o, tax, 'blob', () => squash([...Object.entries(o).filter(([k]) => !SKIP.has(k)).map(([, v]) => v), ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')))
-const tokens = (q) => squash(q).split(/[\s,;،]+/).filter(Boolean)
+const wordsOf = (o, tax) => memo(o, tax, 'words', () => new Set(blob(o, tax).split(/[^a-z0-9؀-ۿ]+/).filter((w) => w.length > 2)))
+export const tokens = (q) => squash(q).split(/[\s,;،]+/).filter(Boolean)
+function near(a, b, d) { // edit distance <= d (small words only, so it is cheap)
+  if (Math.abs(a.length - b.length) > d) return false
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) { const cur = [i]; let min = i
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (cur[j] < min) min = cur[j] }
+    if (min > d) return false; prev = cur }
+  return prev[b.length] <= d
+}
+// every word the visitor typed must appear in the offer (as part of a word). With fuzzy on, words of 5+ letters also accept one typo (two for 8+).
+const tokenOk = (o, t, tax, fuzzy) => blob(o, tax).includes(t) || (fuzzy && t.length >= 5 && [...wordsOf(o, tax)].some((w) => near(w, t, t.length >= 8 ? 2 : 1)))
+// how well an offer fits a search: title > company > place / language > everything else
+export function relevance(o, q, tax) {
+  const ts = tokens(q); if (!ts.length) return 0
+  const pos = squash(o.position), co = squash(o.company), mid = squash([o.location, o.language, ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')), all = blob(o, tax)
+  let s = pos.includes(squash(q).trim()) ? 10 : 0
+  ts.forEach((t) => { const w = (x) => new RegExp('(?:^|[^a-z0-9])' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(x)
+    s += pos.includes(t) ? (w(pos) ? 12 : 8) : co.includes(t) ? (w(co) ? 10 : 6) : mid.includes(t) ? 4 : all.includes(t) ? 1 : 0.5 })
+  return s
+}
+// type-ahead: companies, job titles, areas and languages that contain what is being typed
+export function suggest(offers, q, tax, max = 6) {
+  const ts = tokens(q); if (!ts.length || squash(q).trim().length < 2) return []
+  const last = ts[ts.length - 1], seen = new Set(), out = []
+  const add = (text, kind) => { const k = norm(text); if (!text || seen.has(k)) return; seen.add(k); const n = squash(text); if (ts.every((t) => n.includes(t))) out.push({ text, kind, s: (n.startsWith(last) ? 0 : n.includes(' ' + last) ? 1 : 2) + (kind === 'Company' ? 0 : kind === 'Job' ? 0.1 : 0.2) }) }
+  offers.forEach((o) => { add(String(o.company || '').replace(/\s*\(.*?\)/g, '').trim(), 'Company'); add(o.position, 'Job') })
+  tax.filters.filter((f) => f.visible && (f.id === 'area' || f.id === 'gov' || f.id === 'lang')).forEach((f) => f.options.forEach((x) => add(x.v, f.id === 'lang' ? 'Language' : 'Place')))
+  return out.sort((a, b) => a.s - b.s || a.text.length - b.text.length).slice(0, max)
+}
 
 // ---------- matching ----------
 export function filterOk(o, fl, v, sel, tax) {
@@ -140,7 +169,7 @@ export function filterOk(o, fl, v, sel, tax) {
 export function matches(o, f, tax, ctx) {
   if (f.saved && !(ctx.saved || []).includes(o.id)) return false
   for (const fl of tax.filters) if (!filterOk(o, fl, f.sel[fl.id], f.sel, tax)) return false
-  if (f.q) { const b = blob(o, tax); if (!tokens(f.q).every((t) => b.includes(t))) return false }
+  if (f.q && !tokens(f.q).every((t) => tokenOk(o, t, tax, f.fuzzy))) return false
   return true
 }
 // exact numbers for every chip / option: "how many results if I picked this one (keeping my other choices)?"

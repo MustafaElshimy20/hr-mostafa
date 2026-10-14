@@ -3,16 +3,22 @@ import { FIELDS } from './fields'
 import Admin from './Admin'
 import * as api from './api'
 import { SORTS, sortOffers, salaryLabel, gradsOnly } from './lib'
-import { normTax, valuesOf, filterById, matches, facetCounts, levelRank, optLabel } from './taxonomy'
+import { normTax, valuesOf, filterById, matches, facetCounts, levelRank, optLabel, relevance, suggest, tokens } from './taxonomy'
+import { shareMessage } from './share'
+import { companyKey } from './lib'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
 const useHash = () => { const [h, s] = useState(location.hash); useEffect(() => { const f = () => { s(location.hash); scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, []); return h }
 const offerLink = (o) => location.href.split('#')[0] + '#/offer/' + o.id
 const areasOf = (o, tax) => { const f = filterById(tax, 'area'); return f ? valuesOf(o, f, tax) : [] }
 const valOf = (o, tax, id) => { const f = filterById(tax, id); return f ? valuesOf(o, f, tax) : [] }
-const shareText = (o, tax) => { const sl = salaryLabel(o), pl = areasOf(o, tax)
-  return `🔥 Job offer: ${o.position} at ${o.company}\n` + (sl.text !== 'Salary on request' ? `💰 ${sl.text}${sl.type ? ' ' + sl.type.toLowerCase() : ''}\n` : '') + (pl.length ? `📍 ${pl.slice(0, 2).join(' / ')}\n` : '') + `\nDetails & how to apply:\n${offerLink(o)}` }
-const shareHref = (o, tax) => 'https://wa.me/?text=' + encodeURIComponent(shareText(o, tax))
+const shareHref = (o, tax, tpl) => 'https://wa.me/?text=' + encodeURIComponent(shareMessage(o, tax, tpl, offerLink(o)))
+const avHue = (s) => [...String(s || '?')].reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+function Av({ name, big }) { const ch = (String(name || '').match(/[A-Za-z0-9\u0600-\u06ff]/) || ['?'])[0].toUpperCase(), h = avHue(name)
+  return <span className={big ? 'av big' : 'av'} aria-hidden="true" style={{ background: `hsl(${h} 45% 92%)`, color: `hsl(${h} 55% 28%)` }}>{ch}</span> }
+function Hl({ text, q }) { const ts = tokens(q || '').filter((t) => t.length > 1); if (!ts.length || !text) return text
+  const re = new RegExp('(' + ts.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi')
+  return String(text).split(re).map((p, i) => (i % 2 ? <mark key={i}>{p}</mark> : p)) }
 function useSaved() {
   const [ids, setIds] = useState(() => { try { return JSON.parse(localStorage.getItem('hr_saved') || '[]') } catch { return [] } })
   const toggle = (id) => setIds((p) => { const n = p.includes(id) ? p.filter((x) => x !== id) : [...p, id]; try { localStorage.setItem('hr_saved', JSON.stringify(n)) } catch {} return n })
@@ -43,23 +49,33 @@ export default function App() {
     <main className="wrap">
       {err && <p className="err">{err}</p>}
       {isAdmin ? <Admin {...{ offers, settings, tax, session, reload }} />
-        : id ? <Detail tax={tax} o={offers.find((x) => x.id === id)} n={settings.whatsapp} loading={loading} saved={saved} toggleSave={toggleSave} />
-        : <List tax={tax} offers={open} settings={settings} loading={loading} saved={saved} toggleSave={toggleSave} f={f} setF={setF} page={page} setPage={setPage} />}
+        : id ? <Detail tax={tax} tpl={settings.share_template} offers={offers} o={offers.find((x) => x.id === id)} n={settings.whatsapp} loading={loading} saved={saved} toggleSave={toggleSave} />
+        : <List tax={tax} tpl={settings.share_template} offers={open} settings={settings} loading={loading} saved={saved} toggleSave={toggleSave} f={f} setF={setF} page={page} setPage={setPage} />}
     </main>
     <footer className="wrap foot"><span>{settings.footer}</span><a href="#admin" className="adm">Admin</a></footer>
   </>)
 }
 
-function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page, setPage }) {
+function List({ tax, tpl, offers, settings, loading, saved, toggleSave, f, setF, page, setPage }) {
   const barRef = useRef(null), [fOpen, setFOpen] = useState(false) // filters are collapsible on phones
   const ctx = useMemo(() => ({ saved }), [saved])
   const pick = (fl, v) => { const sel = { ...f.sel, [fl.id]: v }; tax.filters.forEach((c) => { if (c.dependsOn === fl.id) delete sel[c.id] }); setF({ ...f, sel }) } // changing a parent (e.g. governorate) resets its children (area)
-  const facets = useMemo(() => facetCounts(offers, f, tax, ctx), [offers, f, tax, ctx])
+  const [sugOpen, setSugOpen] = useState(false), [hi, setHi] = useState(-1)
+  const strict = useMemo(() => offers.filter((o) => matches(o, f, tax, ctx)), [offers, f, tax, ctx])
+  const fuzzy = !!f.q && strict.length === 0 // nothing matches exactly -> also accept small typing mistakes
+  const ff = useMemo(() => ({ ...f, fuzzy }), [f, fuzzy])
+  const facets = useMemo(() => facetCounts(offers, ff, tax, ctx), [offers, ff, tax, ctx])
+  const sugs = useMemo(() => (sugOpen ? suggest(offers, f.q, tax) : []), [offers, f.q, tax, sugOpen])
+  const applySug = (t) => { setF({ ...f, q: t }); setSugOpen(false); setHi(-1) }
+  const onKey = (e) => { if (e.key === 'ArrowDown' && sugs.length) { e.preventDefault(); setHi((hi + 1) % sugs.length) } else if (e.key === 'ArrowUp' && sugs.length) { e.preventDefault(); setHi((hi - 1 + sugs.length) % sugs.length) }
+    else if (e.key === 'Enter') { if (hi >= 0 && sugs[hi]) { e.preventDefault(); applySug(sugs[hi].text) } else { setSugOpen(false); e.target.blur() } } else if (e.key === 'Escape') setSugOpen(false) }
   const langId = (tax.filters.find((x) => x.kind === 'level') || {}).langFilter
   const list = useMemo(() => {
     const lang = f.sel[langId]
-    return sortOffers(offers.filter((o) => matches(o, f, tax, ctx)), f.sort, (o) => levelRank(o, tax, lang))
-  }, [offers, f, tax, ctx, langId])
+    const base = fuzzy ? offers.filter((o) => matches(o, ff, tax, ctx)) : strict
+    if (f.q && f.sort === 'new') return base.map((o, i) => [o, i, relevance(o, f.q, tax)]).sort((a, b) => b[2] - a[2] || a[1] - b[1]).map((x) => x[0]) // best match first
+    return sortOffers(base, f.sort, (o) => levelRank(o, tax, lang))
+  }, [offers, f, ff, fuzzy, strict, tax, ctx, langId])
   const shownFilters = tax.filters.filter((fl) => fl.visible && (fl.kind === 'level' || fl.options.length))
   const pages = Math.max(1, Math.ceil(list.length / PER_PAGE)), cur = Math.min(page, pages)
   const shown = list.slice((cur - 1) * PER_PAGE, cur * PER_PAGE)
@@ -70,7 +86,9 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
   return (<>
     <section className="hero"><h1>{settings.title}</h1><p>{settings.intro}</p>
       <div className="searchbox"><span className="mag" aria-hidden="true">🔍</span>
-        <input className="big" type="search" aria-label="Search job offers" placeholder="Search jobs, companies, areas…" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
+        <input className="big" type="search" role="combobox" aria-expanded={sugs.length > 0} aria-autocomplete="list" autoComplete="off" aria-label="Search job offers" placeholder="Search jobs, companies, areas…" value={f.q}
+          onChange={(e) => { setF({ ...f, q: e.target.value }); setSugOpen(true); setHi(-1) }} onFocus={() => setSugOpen(true)} onBlur={() => setTimeout(() => setSugOpen(false), 120)} onKeyDown={onKey} />
+        {sugs.length > 0 && <ul className="sugs" role="listbox">{sugs.map((x, i) => <li key={x.text} role="option" aria-selected={i === hi} className={i === hi ? 'on' : ''} onMouseDown={(e) => { e.preventDefault(); applySug(x.text) }}><span>{x.text}</span><small>{x.kind}</small></li>)}</ul>}
         {f.q && <button className="clr" onClick={() => setF({ ...f, q: '' })} aria-label="Clear search">✕</button>}</div></section>
     <section className="fpanel" aria-label="Filters">
       <div className="fhead"><b>Filters</b>{active.length > 0 && <span className="fbadge">{active.length}</span>}<span className="grow" />
@@ -85,14 +103,15 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
       {active.length > 0 && <div className="applied">{active.map((fl) => { const x = fl.options.find((o) => o.v === f.sel[fl.id])
         return <button key={fl.id} className="achip" onClick={() => pick(fl, '')} title="Remove this filter">{fl.label}: <b>{x ? optLabel(x) : f.sel[fl.id]}</b> ✕</button> })}</div>}
     </section>
+    {fuzzy && list.length > 0 && <p className="hint">No exact match for <b>“{f.q}”</b> — showing the closest matches.</p>}
     {lvlSel && <p className="hint">Showing offers that need level <b>{lvlSel}</b> or lower{f.sel[langId] ? ' in ' + f.sel[langId] : ''}. Offers that don't state a level are included.</p>}
     <div className="row bar" ref={barRef}>
       <div className="seg"><button className={!f.saved ? 'on' : ''} onClick={() => setF({ ...f, saved: false })}>All <small>{offers.length}</small></button>
         <button className={f.saved ? 'on heart' : 'heart'} onClick={() => setF({ ...f, saved: true })}>♥ Saved <small>{offers.filter((o) => saved.includes(o.id)).length}</small></button></div>
       <span className="muted" aria-live="polite">{loading ? 'Loading…' : list.length > PER_PAGE ? `Showing ${(cur - 1) * PER_PAGE + 1}–${Math.min(cur * PER_PAGE, list.length)} of ${list.length} offers` : `${list.length} offer${list.length === 1 ? '' : 's'} found`}</span>
       <span className="grow" />
-      <select className="sortsel" aria-label="Sort offers" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })}>{SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
-    <div className="grid">{shown.map((o) => <Card key={o.id} o={o} tax={tax} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
+      <select className="sortsel" aria-label="Sort offers" value={f.sort} onChange={(e) => setF({ ...f, sort: e.target.value })}>{SORTS.map(([v, l]) => <option key={v} value={v}>{v === 'new' && f.q ? 'Sort: best match' : l}</option>)}</select></div>
+    <div className="grid">{shown.map((o) => <Card key={o.id} o={o} q={f.q} tax={tax} tpl={tpl} saved={saved.includes(o.id)} onSave={() => toggleSave(o.id)} />)}</div>
     {pages > 1 && <nav className="pager" aria-label="Pages">
       <button className="pg" disabled={cur === 1} onClick={() => go(cur - 1)}>‹ Prev</button>
       {pageList(cur, pages).map((p, i) => p === '…' ? <span key={'e' + i} className="dots">…</span>
@@ -103,46 +122,56 @@ function List({ tax, offers, settings, loading, saved, toggleSave, f, setF, page
   </>)
 }
 
-function Card({ o, tax, saved, onSave }) {
+function Card({ o, q, tax, tpl, saved, onSave }) {
   const sl = salaryLabel(o), pl = areasOf(o, tax), shift = valOf(o, tax, 'shift').join(' / '), work = valOf(o, tax, 'work').join(' / ')
   const where = pl.length > 2 ? `Multiple locations (${pl.length})` : pl.length ? pl.join(' / ') : (o.location || '').split(/[;(,]/)[0]
   const lang = !o.language ? '' : o.language.length > 34 ? 'Multiple languages' : o.language
   return (<div className="offer">
     <a className="stretch" href={'#/offer/' + o.id}>
-      <span className="co">{o.company}</span><h3>{o.position}</h3>
+      <span className="corow"><Av name={o.company} /><span className="co"><Hl text={o.company} q={q} /></span></span><h3><Hl text={o.position} q={q} /></h3>
       <div className="money">{sl.text}{sl.type && <>{' '}<span className={'stype ' + sl.type.toLowerCase()}>{sl.type}</span></>}</div>
       <div className="tags"><span>📍 {where}</span>{lang && <span>🗣️ {lang}</span>}
         {shift && <span>{/rotat/i.test(shift) ? '🔄' : '🕐'} {shift}</span>}{work && <span>{/home|remote|wfh/i.test(work) ? '🏠' : /hybrid/i.test(work) ? '🔀' : '🏢'} {work}</span>}{gradsOnly(o) && <span>🎓 Graduates</span>}{/female/i.test(o.position) && <span>👩 Females only</span>}</div>
       <span className="more">View details →</span></a>
     <div className="acts">
-      <a className="ico" href={shareHref(o, tax)} target="_blank" rel="noreferrer" title="Share on WhatsApp" aria-label="Share on WhatsApp">↗</a>
+      <a className="ico" href={shareHref(o, tax, tpl)} target="_blank" rel="noreferrer" title="Share on WhatsApp" aria-label="Share on WhatsApp">↗</a>
       <button className={saved ? 'ico on' : 'ico'} onClick={onSave} title={saved ? 'Remove from saved' : 'Save offer'} aria-label={saved ? 'Remove from saved' : 'Save offer'}>{saved ? '♥' : '♡'}</button>
     </div></div>)
 }
 
 // salary text with the Net / Gross word right after the figure, e.g. "12,000 Net + uncapped commission"
 
-function Detail({ tax, o, n, loading, saved, toggleSave }) {
+function Detail({ tax, tpl, offers, o, n, loading, saved, toggleSave }) {
   const [copied, setCopied] = useState(false)
   if (!o) return <><a className="back" href="#">← All offers</a><p className="empty">{loading ? 'Loading…' : 'This offer is no longer available.'}</p></>
-  const Sec = ({ t, keys }) => { const rows = keys.map((k) => [k, FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? (valOf(o, tax, 'work').join(' / ') || o[k]) : o[k]]).filter((r) => r[2])
-    return rows.length ? <section className="card"><h3>{t}</h3><dl>{rows.map(([k, l, v]) => <div key={k}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null }
+  const Sec = ({ t, icon, keys, wide }) => { const rows = keys.map((k) => [k, FIELDS.find((x) => x[0] === k)[1], k === 'work_mode' ? (valOf(o, tax, 'work').join(' / ') || o[k]) : o[k]]).filter((r) => r[2])
+    return rows.length ? <section className={'card' + (wide ? ' wide' : '')}><h3><span aria-hidden="true">{icon}</span> {t}</h3><dl>{rows.map(([k, l, v]) => <div key={k}><dt>{l}</dt><dd>{v}</dd></div>)}</dl></section> : null }
   const msg = `Hello, I'd like to apply for: ${o.position} at ${o.company}${o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''}`
+  const sl = salaryLabel(o), pl = areasOf(o, tax), short = (s, n = 38) => (s && s.length > n ? '' : s)
+  const facts = [['💰', 'Salary', sl.text === 'Salary on request' ? '' : sl.text + (sl.type ? ' ' + sl.type : '')], ['📍', 'Location', pl.length > 2 ? `${pl.length} locations` : pl.join(' / ') || (o.location || '').split(/[;(,]/)[0].trim()],
+    ['🗣️', 'Language', short(o.language) || (o.language ? 'See requirements' : '')], ['🕐', 'Shift', valOf(o, tax, 'shift').join(' / ')], ['🏢', 'Work mode', valOf(o, tax, 'work').join(' / ')],
+    ['🎓', 'Education', short((o.education || '').split(/[;(]/)[0].trim(), 34) || (o.education ? 'See requirements' : '')]].filter((x) => x[2])
+  const ids = (x, id) => { const f = filterById(tax, id); return f ? valuesOf(x, f, tax) : [] }
+  const similar = offers.filter((x) => x.id !== o.id && x.status !== 'Closed').map((x) => ({ x, s: (companyKey(x.company) === companyKey(o.company) ? 5 : 0) + ids(x, 'area').filter((a) => ids(o, 'area').includes(a)).length * 2 + ids(x, 'lang').filter((a) => ids(o, 'lang').includes(a)).length }))
+    .filter((r) => r.s > 0).sort((a, b) => b.s - a.s).slice(0, 3).map((r) => r.x)
   return (<>
     <a className="back" href="#">← All offers</a>
-    <div className="dhead"><span className="co">{o.company}</span><h1>{o.position}</h1>
-      <div className="tags"><span>📍 {o.location}</span>{o.language && <span>🗣️ {o.language}</span>}</div>
+    <div className="dhead"><span className="corow"><Av name={o.company} big /><span className="co">{o.company}</span></span><h1>{o.position}</h1>
+      {o.status === 'Closed' && <p className="closedmsg">This offer is currently closed. Check the other offers below.</p>}
+      {facts.length > 0 && <div className="facts">{facts.map(([i, l, v]) => <div key={l} className="fact"><span className="fi" aria-hidden="true">{i}</span><span><small>{l}</small><b>{v}</b></span></div>)}</div>}
       <a className="btn wa big" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply on WhatsApp</a>
       <div className="row dacts">
         <button className={saved.includes(o.id) ? 'btn on' : 'btn'} onClick={() => toggleSave(o.id)}>{saved.includes(o.id) ? '♥ Saved' : '♡ Save'}</button>
-        <a className="btn" href={shareHref(o, tax)} target="_blank" rel="noreferrer">↗ Share on WhatsApp</a>
+        <a className="btn" href={shareHref(o, tax, tpl)} target="_blank" rel="noreferrer">↗ Share on WhatsApp</a>
         <button className="btn" onClick={() => navigator.clipboard.writeText(offerLink(o)).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }, () => {})}>{copied ? 'Copied ✔' : '🔗 Copy link'}</button>
       </div></div>
-    <Sec t="Salary & benefits" keys={['salary', 'benefits', 'transport']} />
-    <Sec t="Schedule" keys={['shifts', 'work_mode', 'interview_type', 'interview_time']} />
-    <Sec t="Requirements" keys={['education', 'age', 'nationality', 'military', 'experience', 'language']} />
-    <Sec t="More info" keys={['steps', 'notes']} />
+    <div className="dgrid">
+      <Sec t="Salary & benefits" icon="💰" keys={['salary', 'benefits', 'transport']} />
+      <Sec t="Schedule" icon="🕐" keys={['shifts', 'work_mode', 'interview_type', 'interview_time']} />
+      <Sec t="Requirements" icon="📋" keys={['education', 'age', 'nationality', 'military', 'experience', 'language']} />
+      <Sec t="How to apply & notes" icon="📝" keys={['steps', 'notes']} />
+    </div>
+    {similar.length > 0 && <section className="similar"><h2>More offers you may like</h2><div className="grid">{similar.map((x) => <Card key={x.id} o={x} tax={tax} tpl={tpl} saved={saved.includes(x.id)} onSave={() => toggleSave(x.id)} />)}</div></section>}
     <div className="sticky"><a className="btn wa big" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply on WhatsApp</a></div>
   </>)
 }
-

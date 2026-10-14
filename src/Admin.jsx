@@ -3,7 +3,8 @@ import { FIELDS, SECTIONS, HINTS, SETTINGS } from './fields'
 import * as api from './api'
 import { companyKey, low, detectSalaryType, salaryTypeOf, SALARY_TYPES } from './lib'
 import { filterById } from './taxonomy'
-import { FiltersTab, TagEditor, Classify } from './Taxonomy'
+import { FiltersTab, TagEditor, Classify } from './FilterAdmin'
+import ShareEditor from './ShareEditor'
 
 const field = (k) => FIELDS.find((x) => x[0] === k)
 const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
@@ -28,7 +29,7 @@ export default function Admin({ offers, settings, tax, session, reload }) {
       <button className={tab === 'filters' ? 'on' : ''} onClick={() => setTab('filters')}>Filters</button>
       <button className={tab === 'settings' ? 'on' : ''} onClick={() => setTab('settings')}>Site settings & backup</button></div>
     {tab === 'offers' ? <OffersTab {...{ offers, tax, run, setEdit }} /> : tab === 'filters' ? <FiltersTab {...{ offers, tax, run, say }} /> : <SettingsTab {...{ offers, settings, tax, run, say }} />}
-    {edit && <OfferForm o={edit} offers={offers} tax={tax} run={run} onClose={() => setEdit(null)} />}
+    {edit && <OfferForm o={edit} offers={offers} tax={tax} shareTpl={settings.share_template} run={run} onClose={() => setEdit(null)} />}
     {msg && <div className={'toast' + (msg.bad ? ' bad' : '')} role="status">{msg.text}</div>}
   </div>)
 }
@@ -74,7 +75,7 @@ function OffersTab({ offers, tax, run, setEdit }) {
   </>)
 }
 
-function OfferForm({ o, offers, tax, run, onClose }) {
+function OfferForm({ o, offers, tax, shareTpl, run, onClose }) {
   const [tx, setTx] = useState(tax)
   const [v, setV] = useState(() => ({ ...o, salary_type: o.salary_type || detectSalaryType(o) || 'Not specified' })), [err, setErr] = useState('')
   const [typeChosen, setTypeChosen] = useState(!!o.salary_type) // once the admin picks Net/Gross, typing in the salary box no longer changes it
@@ -84,6 +85,7 @@ function OfferForm({ o, offers, tax, run, onClose }) {
     setV((p) => { const n = { ...p, [k]: val }; if (k === 'salary' && !typeChosen) { const d = detectSalaryType(n); if (d) n.salary_type = d } return n }) }
   const save = () => {
     const c = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, typeof x === 'string' ? x.trim() : x]))
+    if (!c.share_text) delete c.share_text
     if (!c.company || !c.position) return setErr('Company and Position are required.')
     if (c.link && !/^https?:\/\//i.test(c.link)) return setErr('Form link must start with http:// or https://')
     const same = offers.find((x) => x.id !== c.id && companyKey(x.company) === companyKey(c.company) && low(x.position) === low(c.position) && low(x.location) === low(c.location))
@@ -101,6 +103,9 @@ function OfferForm({ o, offers, tax, run, onClose }) {
               {opts ? <select value={v[k] || opts[0]} onChange={set(k)}>{opts.map((x) => <option key={x}>{x}</option>)}</select>
                 : long ? <textarea value={v[k] || ''} onChange={set(k)} placeholder={HINTS[k] || ''} /> : <input value={v[k] || ''} onChange={set(k)} placeholder={HINTS[k] || ''} />}</label> })}</div></fieldset>)}
         <TagEditor v={v} setV={setV} tx={tx} setTx={setTx} />
+        <fieldset><legend>WhatsApp share message (optional)</legend>
+          <p className="muted small">Leave empty to use the site’s standard share message. Write something here to use a special message only for this offer.</p>
+          <ShareEditor value={v.share_text} onChange={(x) => setV((p) => ({ ...p, share_text: x }))} sample={v} tax={tx} template={shareTpl} placeholder="Empty = standard message" /></fieldset>
       </div>
       <div className="pf">{err && <span className="err">{err}</span>}<span className="grow" /><button className="btn" onClick={onClose}>Cancel</button><button className="btn pri" onClick={save}>Save offer</button></div>
     </div></div>)
@@ -123,6 +128,10 @@ function SettingsTab({ offers, settings, tax, run, say }) {
       {SETTINGS.map(([k, l, long]) => <label key={k}>{l}{long ? <textarea value={s[k] || ''} onChange={(e) => setS({ ...s, [k]: e.target.value })} /> : <input value={s[k] || ''} onChange={(e) => setS({ ...s, [k]: e.target.value })} />}</label>)}
       <p className="muted small">Tip: use the banner for news like “New offers added today ✨”. Leave it empty to hide it.</p>
       <button className="btn pri" onClick={() => run(() => api.saveSettings(s), 'Settings saved ✔')}>Save settings</button></section>
+    <section className="acard"><h3>WhatsApp share message</h3>
+      <p className="muted small">The text visitors send when they tap “Share on WhatsApp” on an offer. Write it your way, add emojis, and click a button to insert details that change per offer (job title, salary…). A line whose detail is missing for an offer is left out automatically. You can also write a special message for one offer inside that offer’s edit form. Leave this empty to use the standard message.</p>
+      <ShareEditor value={s.share_template} onChange={(v) => setS({ ...s, share_template: v })} sample={{ ...(offers.find((o) => o.status !== 'Closed') || offers[0] || { position: 'Job title', company: 'Company' }), share_text: '' }} tax={tax} template={s.share_template} />
+      <div className="row"><button className="btn pri" onClick={() => run(() => api.saveSettings(s), 'Share message saved ✔')}>Save share message</button><button className="btn" onClick={() => setS({ ...s, share_template: '' })}>Back to the standard message</button></div></section>
     <section className="acard"><h3>Backup</h3>
       <p className="muted small">Download your offers regularly. The JSON file can be imported back; the CSV opens in Excel / Google Sheets.</p>
       <div className="row"><button className="btn" onClick={exportJson}>⬇ Backup (JSON)</button><button className="btn" onClick={exportCsv}>⬇ Excel (CSV)</button>
