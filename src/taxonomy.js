@@ -148,16 +148,6 @@ export function relevance(o, q, tax) {
     s += pos.includes(t) ? (w(pos) ? 12 : 8) : co.includes(t) ? (w(co) ? 10 : 6) : mid.includes(t) ? 4 : all.includes(t) ? 1 : 0.5 })
   return s
 }
-// type-ahead: companies, job titles, areas and languages that contain what is being typed
-export function suggest(offers, q, tax, max = 6) {
-  const ts = tokens(q); if (!ts.length || squash(q).trim().length < 2) return []
-  const last = ts[ts.length - 1], seen = new Set(), out = []
-  const add = (text, kind) => { const k = norm(text); if (!text || seen.has(k)) return; seen.add(k); const n = squash(text); if (ts.every((t) => n.includes(t))) out.push({ text, kind, s: (n.startsWith(last) ? 0 : n.includes(' ' + last) ? 1 : 2) + (kind === 'Company' ? 0 : kind === 'Job' ? 0.1 : 0.2) }) }
-  offers.forEach((o) => { add(String(o.company || '').replace(/\s*\(.*?\)/g, '').trim(), 'Company'); add(o.position, 'Job') })
-  tax.filters.filter((f) => f.visible && (f.id === 'area' || f.id === 'gov' || f.id === 'lang')).forEach((f) => f.options.forEach((x) => add(x.v, f.id === 'lang' ? 'Language' : 'Place')))
-  return out.sort((a, b) => a.s - b.s || a.text.length - b.text.length).slice(0, max)
-}
-
 // ---------- matching ----------
 export function filterOk(o, fl, v, sel, tax) {
   if (!v) return true
