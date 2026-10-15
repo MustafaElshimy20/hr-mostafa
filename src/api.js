@@ -6,7 +6,7 @@ const env = import.meta.env
 const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const sb = url && key ? createClient(url, key) : null
 export const demo = !sb
-export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the right job for you. Search or filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '', share_template: '' }
+export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the right job for you. Search or filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '', owner: 'Mostafa', share_template: '' }
 const ls = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
 const base = () => ls('hr_offers', seed.map((d, i) => ({ id: 's' + i, ...d })))
 const put = (a) => localStorage.setItem('hr_offers', JSON.stringify(a))
@@ -71,4 +71,17 @@ export const auth = {
   login: (email, password) => sb.auth.signInWithPassword({ email, password }),
   logout: () => sb.auth.signOut(),
   changePassword: (password) => sb.auth.updateUser({ password }),
+}
+
+// Optional AI helper (Vercel function /api/parse-offer). Returns null when it is not set up, so callers fall back to the offline parser.
+export async function parseOfferAI(text) {
+  if (demo) return null
+  try {
+    const { data } = await sb.auth.getSession(), token = data && data.session && data.session.access_token
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000)
+    const r = await fetch('/api/parse-offer', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify({ text }) })
+    clearTimeout(t)
+    if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return null
+    return await r.json()
+  } catch { return null }
 }

@@ -18,4 +18,4 @@ export const SECTIONS = [
 ]
 export const HINTS = { company: 'e.g. Teleperformance', position: 'e.g. French Customer Service', location: 'e.g. Nasr City', salary: 'e.g. 15,000 net + commission', age: 'e.g. 18-30',
   education: 'e.g. Graduates, undergrads, gap years', language: 'e.g. English B2+  or  French C1 + English B2', link: 'https://…', interview_type: 'e.g. Online interview / Site interview', interview_time: 'e.g. Sun-Thu, 11 AM-5 PM' }
-export const SETTINGS = [['title', 'Site title'], ['intro', 'Welcome text', 1], ['whatsapp', 'WhatsApp number (with country code)'], ['banner', 'Announcement banner (optional, shown at the top of the site)', 1], ['footer', 'Footer text', 1]]
+export const SETTINGS = [['title', 'Site title'], ['intro', 'Welcome text', 1], ['whatsapp', 'WhatsApp number (with country code)'], ['banner', 'Announcement banner (optional, shown at the top of the site)', 1], ['footer', 'Footer text', 1], ['owner', 'Owner name (shown in the copyright line)']]

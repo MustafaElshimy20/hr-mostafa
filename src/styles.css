@@ -191,3 +191,13 @@ h1,h2,h3{letter-spacing:-.01em}
   .dcard{padding:16px}
   .sticky{padding:10px 0 12px}
 }
+
+/* footer copyright */
+.foot{gap:16px;align-items:flex-start}.foot .fl{display:flex;flex-direction:column;gap:4px}.foot .copy{font-size:12px;opacity:.85;max-width:560px}
+/* smart fill */
+.smart{border:1px solid var(--line,#e3e8e7);border-radius:12px;background:#f3faf8;margin-bottom:14px;overflow:hidden}
+.smarthead{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;cursor:pointer;font-weight:700}
+.smarthead small{font-weight:400;color:var(--m,#6b7a78);flex:1}.smarthead i{font-style:normal;font-size:20px;line-height:1}
+.smartbody{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}.smartbody textarea{width:100%;min-height:120px;resize:vertical}
+.smartok{margin:0;color:#0f6b5c;font-weight:600}
+label.auto input,label.auto textarea,label.auto select{background:#fffbe6;box-shadow:0 0 0 2px #f6d860}

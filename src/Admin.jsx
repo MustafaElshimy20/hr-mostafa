@@ -5,6 +5,7 @@ import { companyKey, low, detectSalaryType, salaryTypeOf, SALARY_TYPES } from '.
 import { filterById } from './taxonomy'
 import { FiltersTab, TagEditor, Classify } from './FilterAdmin'
 import ShareEditor from './ShareEditor'
+import { smartFill } from './smartParse'
 
 const field = (k) => FIELDS.find((x) => x[0] === k)
 const csvCell = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
@@ -78,9 +79,22 @@ function OffersTab({ offers, tax, run, setEdit }) {
 function OfferForm({ o, offers, tax, shareTpl, run, onClose }) {
   const [tx, setTx] = useState(tax)
   const [v, setV] = useState(() => ({ ...o, salary_type: o.salary_type || detectSalaryType(o) || 'Not specified' })), [err, setErr] = useState('')
+  const [paste, setPaste] = useState(''), [smartOpen, setSmartOpen] = useState(!o.id && !o.company), [auto, setAuto] = useState([]), [sinfo, setSinfo] = useState(null), [busy, setBusy] = useState(false)
   const [typeChosen, setTypeChosen] = useState(!!o.salary_type) // once the admin picks Net/Gross, typing in the salary box no longer changes it
   useEffect(() => { const h = (e) => e.key === 'Escape' && onClose(); addEventListener('keydown', h); return () => removeEventListener('keydown', h) }, [])
-  const set = (k) => (e) => { const val = e.target.value
+  const fill = async () => {
+    if (paste.trim().length < 10) return setSinfo({ bad: true, text: 'Paste the offer text first.' })
+    setBusy(true); setSinfo(null)
+    const r = await smartFill(paste, { tax: tx, companies: [...new Set(offers.map((x) => x.company).filter(Boolean))] }, api.parseOfferAI)
+    setBusy(false)
+    const keys = r.found
+    if (!keys.length) return setSinfo({ bad: true, text: 'Could not find any details in this text.' })
+    setV((p) => { const n = { ...p }; keys.forEach((k) => { n[k] = k === 'internal' && p.internal ? p.internal + '\n' + r.fields[k] : r.fields[k] }); return n })
+    if (r.fields.salary_type) setTypeChosen(true)
+    setAuto(keys)
+    setSinfo({ text: `Filled ${keys.length} field${keys.length > 1 ? 's' : ''}${r.ai ? ' with AI' : ''}. Please review the highlighted fields, then save.`, miss: ['company', 'position'].filter((k) => !r.fields[k]) })
+  }
+  const set = (k) => (e) => { const val = e.target.value; setAuto((a) => a.filter((x) => x !== k))
     if (k === 'salary_type') setTypeChosen(true)
     setV((p) => { const n = { ...p, [k]: val }; if (k === 'salary' && !typeChosen) { const d = detectSalaryType(n); if (d) n.salary_type = d } return n }) }
   const save = () => {
@@ -97,9 +111,18 @@ function OfferForm({ o, offers, tax, shareTpl, run, onClose }) {
     <div className="panel" role="dialog" aria-modal="true">
       <div className="ph"><h3>{o.id ? 'Edit offer' : 'New offer'}</h3><button className="x" onClick={onClose} aria-label="Close">✕</button></div>
       <div className="pb">
+        <div className={'smart' + (smartOpen ? ' open' : '')}>
+          <button type="button" className="smarthead" onClick={() => setSmartOpen(!smartOpen)} aria-expanded={smartOpen}><span>✨ Smart fill</span><small>Paste the offer text and the form fills itself</small><i>{smartOpen ? '−' : '+'}</i></button>
+          {smartOpen && <div className="smartbody">
+            <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} dir="auto" placeholder={'Paste the job post here (English or Arabic), for example:\nTeleperformance is hiring French Customer Service\nLocation: Nasr City\nSalary: 15,000 net\nLanguage: French C1 + English B2\nApply: https://…'} />
+            <div className="row"><button type="button" className="btn pri" onClick={fill} disabled={busy}>{busy ? 'Reading…' : '✨ Fill the form'}</button>{paste && <button type="button" className="btn" onClick={() => { setPaste(''); setSinfo(null) }}>Clear</button>}
+              <span className="muted small">Nothing is saved until you press “Save offer”. Anything it could not place goes to Internal notes (hidden from visitors).</span></div>
+            {sinfo && <p className={sinfo.bad ? 'err' : 'smartok'}>{sinfo.text}{sinfo.miss && sinfo.miss.length > 0 && <> Still missing: <b>{sinfo.miss.join(', ')}</b>.</>}</p>}
+          </div>}
+        </div>
         {SECTIONS.map(([title, keys]) => <fieldset key={title}><legend>{title}</legend>
           <div className="fgrid">{keys.map((k) => { const [, label, long, fopts] = field(k), opts = k === 'work_mode' ? ((filterById(tx, 'work') || { options: [] }).options.map((x) => x.v).concat(v.work_mode && !(filterById(tx, 'work').options.some((x) => x.v === v.work_mode)) ? [v.work_mode] : [])) : fopts
-            return <label key={k} className={long ? 'full' : ''}>{label}
+            return <label key={k} className={(long ? 'full' : '') + (auto.includes(k) ? ' auto' : '')}>{label}
               {opts ? <select value={v[k] || opts[0]} onChange={set(k)}>{opts.map((x) => <option key={x}>{x}</option>)}</select>
                 : long ? <textarea value={v[k] || ''} onChange={set(k)} placeholder={HINTS[k] || ''} /> : <input value={v[k] || ''} onChange={set(k)} placeholder={HINTS[k] || ''} />}</label> })}</div></fieldset>)}
         <TagEditor v={v} setV={setV} tx={tx} setTx={setTx} />
