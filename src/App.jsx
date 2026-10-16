@@ -49,7 +49,7 @@ export default function App() {
         : id ? <Detail tax={tax} tpl={settings.share_template} applyTpl={settings.apply_template} o={offers.find((x) => x.id === id)} n={settings.whatsapp} loading={loading} saved={saved} toggleSave={toggleSave} />
         : <List tax={tax} tpl={settings.share_template} offers={open} settings={settings} loading={loading} saved={saved} toggleSave={toggleSave} f={f} setF={setF} page={page} setPage={setPage} />}
     </main>
-    <footer className="wrap foot"><div className="fl">{settings.footer && <span>{settings.footer}</span>}<span className="copy">© {new Date().getFullYear()} {settings.owner || settings.title}. All rights reserved. Unauthorised copying or reuse of this site, its design or its content is prohibited.</span></div><a href="#admin" className="adm">Admin</a></footer>
+    <footer className="wrap foot"><div className="fl">{settings.footer && <span>{settings.footer}</span>}<span className="copy">© {new Date().getFullYear()} {settings.owner || settings.title}. All rights reserved.</span></div><a href="#admin" className="adm">Admin</a></footer>
   </>)
 }
 
