@@ -1,4 +1,4 @@
-# HR Mostafa – Job Offers site (React + Vite)
+# Offerak – Job Offers site (React + Vite)
 Run locally: `npm install` then `npm run dev` (works instantly in demo mode, edits saved in your browser only).
 Visitors browse offers, filter/search, open an offer's details page and apply via WhatsApp. Admin page: click 'Admin' in the footer (or add `#admin` to the URL).
 
@@ -50,3 +50,6 @@ It works offline with no setup. **Optional AI boost (free):** create a key at ai
 
 ## Copyright
 © Mostafa. All rights reserved. The footer shows the owner name set in Admin → Site settings ("Owner name"). The code, design and content may not be copied or reused without written permission.
+
+## Apply message
+The text that reaches you on WhatsApp when a candidate taps **Apply via WhatsApp**. Edit it in Admin → Site settings → **Apply message** (placeholders like job title, company, area, salary + emojis, with a live preview), or give one offer its own message in that offer's edit form. Empty = the original standard message.

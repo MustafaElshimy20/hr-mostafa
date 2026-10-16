@@ -20,9 +20,23 @@ export function shareValues(o, tax, link) {
   }
 }
 // A line that uses a placeholder with nothing to show (e.g. "📍 {area}" on an offer without a place) is left out, so there are never blank lines like "💰 ".
-export function shareMessage(o, tax, template, link) {
-  const tpl = (o.share_text || '').trim() || (template || '').trim() || DEFAULT_SHARE, v = shareValues(o, tax, link)
+function render(tpl, o, tax, link, autoLink) {
+  const v = shareValues(o, tax, link)
   const out = tpl.replace(/\r/g, '').split('\n').filter((line) => { const ks = [...line.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((k) => k in v); return !ks.length || ks.every((k) => v[k]) })
     .map((line) => line.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m))).join('\n')
-  return (/\{link\}/.test(tpl) ? out : out + '\n\n' + link).replace(/\n{3,}/g, '\n\n').trim()
+  return ((autoLink && !/\{link\}/.test(tpl)) ? out + '\n\n' + link : out).replace(/\n{3,}/g, '\n\n').trim()
+}
+export function shareMessage(o, tax, template, link) {
+  return render((o.share_text || '').trim() || (template || '').trim() || DEFAULT_SHARE, o, tax, link, true)
+}
+
+// The text that is sent to you when a candidate taps "Apply via WhatsApp". Site-wide message (Site settings) or one offer's own (apply_text).
+export const DEFAULT_APPLY = "Hello, I'd like to apply for: {position} at {company}\n📍 {area}"
+export function applyMessage(o, tax, template, link) {
+  const tpl = (o.apply_text || '').trim() || (template || '').trim()
+  if (!tpl) { // the original wording, kept exactly
+    const loc = o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''
+    return `Hello, I'd like to apply for: ${o.position} at ${o.company}${loc}`
+  }
+  return render(tpl, o, tax, link, false)
 }

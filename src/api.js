@@ -6,7 +6,7 @@ const env = import.meta.env
 const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
 export const sb = url && key ? createClient(url, key) : null
 export const demo = !sb
-export const DEFAULTS = { title: 'HR Mostafa', intro: 'Find the right job for you. Search or filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '', owner: 'Mostafa', share_template: '' }
+export const DEFAULTS = { title: 'Offerak', intro: 'Find the right job for you. Search or filter, then apply on WhatsApp.', whatsapp: '201505885209', banner: '', footer: '', owner: 'Mostafa', share_template: '', apply_template: '' }
 const ls = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
 const base = () => ls('hr_offers', seed.map((d, i) => ({ id: 's' + i, ...d })))
 const put = (a) => localStorage.setItem('hr_offers', JSON.stringify(a))
@@ -44,10 +44,13 @@ export async function importStarter() {
   const t0 = Date.now() // staggered timestamps keep the starter order
   const { error } = await sb.from('offers').insert(seed.map((data, i) => ({ data, created_at: new Date(t0 + i).toISOString() }))); if (error) throw error
 }
+// The last settings seen are remembered in the browser, so a returning visitor never sees default texts flash before the real ones load.
+export const cachedSettings = () => ({ ...DEFAULTS, ...ls('hr_settings_cache', {}) })
+const remember = (s) => { try { localStorage.setItem('hr_settings_cache', JSON.stringify(s)) } catch {} return s }
 export async function loadSettings() {
-  if (demo) return { ...DEFAULTS, ...ls('hr_settings', {}) }
+  if (demo) return remember({ ...DEFAULTS, ...ls('hr_settings', {}) })
   const { data } = await sb.from('site_settings').select('key,value')
-  return { ...DEFAULTS, ...Object.fromEntries((data || []).filter((r) => r.key !== 'taxonomy').map((r) => [r.key, r.value])) }
+  return remember({ ...DEFAULTS, ...Object.fromEntries((data || []).filter((r) => r.key !== 'taxonomy').map((r) => [r.key, r.value])) })
 }
 export async function saveSettings(s) {
   if (demo) return localStorage.setItem('hr_settings', JSON.stringify(s))

@@ -124,7 +124,7 @@ export function levelRank(o, tax, lang) { // -1 = no level stated
 export const levelOk = (o, tax, lang, level) => { if (!level) return true; const r = levelRank(o, tax, lang); return r < 0 || r <= LV.indexOf(level) }
 
 // ---------- search ----------
-const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category', 'categories', 'share_text'])  // (old category data is kept in the database but no longer used)
+const SKIP = new Set(['id', 'internal', 'link', 'status', 'tags', 'salary_type', 'category', 'categories', 'share_text', 'apply_text'])  // (old category data is kept in the database but no longer used)
 const squash = (s) => norm(s).replace(/(\d),(?=\d)/g, '$1')
 const blob = (o, tax) => memo(o, tax, 'blob', () => squash([...Object.entries(o).filter(([k]) => !SKIP.has(k)).map(([, v]) => v), ...tax.filters.flatMap((f) => valuesOf(o, f, tax))].join(' ')))
 const wordsOf = (o, tax) => memo(o, tax, 'words', () => new Set(blob(o, tax).split(/[^a-z0-9؀-ۿ]+/).filter((w) => w.length > 2)))

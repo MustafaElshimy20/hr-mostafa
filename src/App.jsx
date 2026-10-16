@@ -4,7 +4,7 @@ import Admin from './Admin'
 import * as api from './api'
 import { SORTS, sortOffers, salaryLabel, gradsOnly } from './lib'
 import { normTax, valuesOf, filterById, matches, facetCounts, levelRank, optLabel, relevance, tokens } from './taxonomy'
-import { shareMessage } from './share'
+import { shareMessage, applyMessage } from './share'
 import { tidy, toList, plainSalary } from './text'
 
 const wa = (n, t = '') => `https://wa.me/${n}${t ? '?text=' + encodeURIComponent(t) : ''}`
@@ -30,7 +30,7 @@ function pageList(cur, pages) {
 const EMPTY = { q: '', sel: {}, sort: 'new', saved: false }
 
 export default function App() {
-  const [offers, setOffers] = useState([]), [tax, setTax] = useState(() => normTax(null)), [settings, setSettings] = useState(api.DEFAULTS), [err, setErr] = useState('')
+  const [offers, setOffers] = useState([]), [tax, setTax] = useState(() => normTax(null)), [settings, setSettings] = useState(api.cachedSettings), [err, setErr] = useState('')
   const [session, setSession] = useState(null), [loading, setLoading] = useState(true), hash = useHash(), [saved, toggleSave] = useSaved()
   const [f, setFilters] = useState(EMPTY), [page, setPage] = useState(1)
   const setF = (n) => { setFilters(n); setPage(1) } // any filter change goes back to page 1
@@ -46,10 +46,10 @@ export default function App() {
     <main className="wrap">
       {err && <p className="err">{err}</p>}
       {isAdmin ? <Admin {...{ offers, settings, tax, session, reload }} />
-        : id ? <Detail tax={tax} tpl={settings.share_template} o={offers.find((x) => x.id === id)} n={settings.whatsapp} loading={loading} saved={saved} toggleSave={toggleSave} />
+        : id ? <Detail tax={tax} tpl={settings.share_template} applyTpl={settings.apply_template} o={offers.find((x) => x.id === id)} n={settings.whatsapp} loading={loading} saved={saved} toggleSave={toggleSave} />
         : <List tax={tax} tpl={settings.share_template} offers={open} settings={settings} loading={loading} saved={saved} toggleSave={toggleSave} f={f} setF={setF} page={page} setPage={setPage} />}
     </main>
-    <footer className="wrap foot"><div className="fl">{settings.footer && <span>{settings.footer}</span>}<span className="copy">© {new Date().getFullYear()} {settings.owner || settings.title}. All rights reserved.</span></div><a href="#admin" className="adm">Admin</a></footer>
+    <footer className="wrap foot"><div className="fl">{settings.footer && <span>{settings.footer}</span>}<span className="copy">© {new Date().getFullYear()} {settings.owner || settings.title}. All rights reserved. Unauthorised copying or reuse of this site, its design or its content is prohibited.</span></div><a href="#admin" className="adm">Admin</a></footer>
   </>)
 }
 
@@ -138,7 +138,7 @@ function Items({ text, check, arrows }) { const l = toList(text, { arrows, sente
   if (arrows && l.length > 1) return <ol className="steps">{l.map((x, i) => <li key={i}>{x}</li>)}</ol>
   return l.length > 1 || check ? <ul className={check ? 'ticks' : 'bul'}>{l.map((x, i) => <li key={i}>{x}</li>)}</ul> : <>{l[0]}</> }
 
-function Detail({ tax, tpl, o, n, loading, saved, toggleSave }) {
+function Detail({ tax, tpl, applyTpl, o, n, loading, saved, toggleSave }) {
   const [copied, setCopied] = useState(false)
   if (!o) return <><a className="back" href="#">← All offers</a><p className="empty">{loading ? 'Loading…' : 'This offer is no longer available.'}</p></>
   const sl = salaryLabel(o), pl = areasOf(o, tax), shift = valOf(o, tax, 'shift').join(' / '), work = valOf(o, tax, 'work').join(' / ')
@@ -151,7 +151,7 @@ function Detail({ tax, tpl, o, n, loading, saved, toggleSave }) {
     lang && ['🗣️', 'Language', langShort ? lang : 'Multiple languages (see below)'],
     exp && ['🧑‍💼', 'Experience', expShort ? exp : 'See requirements below'],
   ].filter(Boolean)
-  const msg = `Hello, I'd like to apply for: ${o.position} at ${o.company}${o.location ? ' (' + o.location.split(/[;(]/)[0].trim() + ')' : ''}`
+  const msg = applyMessage(o, tax, applyTpl, offerLink(o))
   const apply = <a className="btn wa big block" target="_blank" rel="noreferrer" href={wa(n, msg)}>💬 Apply via WhatsApp</a>
   const Card = ({ icon, title, rows }) => { const r = rows.filter(Boolean); return r.length ? <section className="dcard"><h3><span className="ic" aria-hidden="true">{icon}</span>{title}</h3><dl>{r}</dl></section> : null }
   return (<>
